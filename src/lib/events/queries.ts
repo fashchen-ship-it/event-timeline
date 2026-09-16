@@ -106,12 +106,12 @@ export async function getEventRelations(eventId: string) {
   const relatedIds = [...new Set(references.map((reference) => reference.source_event_id === eventId ? reference.target_event_id : reference.source_event_id))];
   if (!relatedIds.length) return { outgoing: [] as EventReference[], incoming: [] as EventReference[] };
 
-  const { data: relatedEvents, error: relatedError } = await supabase.from("events").select("id, title").in("id", relatedIds);
+  const { data: relatedEvents, error: relatedError } = await supabase.from("events").select("id, title, status, start_date, icon, event_nodes(count)").in("id", relatedIds);
   if (relatedError) throw new Error("无法读取关联事件，请稍后刷新重试。");
-  const titles = new Map((relatedEvents ?? []).map((event) => [event.id, event.title]));
+  const details = new Map((relatedEvents ?? []).map((event) => [event.id, event]));
   const mapReference = (reference: (typeof references)[number], relatedId: string): EventReference | null => {
-    const title = titles.get(relatedId);
-    return title ? { id: reference.id, event_id: relatedId, event_title: title, note: reference.note } : null;
+    const event = details.get(relatedId);
+    return event ? { id: reference.id, event_id: relatedId, event_title: event.title, note: reference.note, event_status: event.status, event_start_date: event.start_date, event_icon: event.icon, node_count: event.event_nodes?.[0]?.count ?? 0 } : null;
   };
 
   return {

@@ -13,6 +13,10 @@ export type EventReference = {
   event_id: string;
   event_title: string;
   note: string | null;
+  event_status: EventStatus;
+  event_start_date: string;
+  event_icon: string | null;
+  node_count: number;
 };
 
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {

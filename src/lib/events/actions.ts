@@ -222,10 +222,10 @@ export async function createEventReference(
   return { success: "关联已添加。" };
 }
 
-const deleteReferenceSchema = z.object({ sourceEventId: z.string().uuid(), referenceId: z.string().uuid() });
+const deleteReferenceSchema = z.object({ sourceEventId: z.string().uuid(), referenceId: z.string().uuid(), returnEventId: z.string().uuid().optional() });
 
 export async function deleteEventReference(formData: FormData) {
-  const parsed = deleteReferenceSchema.safeParse({ sourceEventId: formData.get("sourceEventId"), referenceId: formData.get("referenceId") });
+  const parsed = deleteReferenceSchema.safeParse({ sourceEventId: formData.get("sourceEventId"), referenceId: formData.get("referenceId"), returnEventId: formData.get("returnEventId") || undefined });
   if (!parsed.success) return;
   const { supabase } = await requireUser();
   const { error } = await supabase
@@ -235,6 +235,7 @@ export async function deleteEventReference(formData: FormData) {
     .eq("source_event_id", parsed.data.sourceEventId);
   if (error) throw new Error("删除关联失败，请稍后重试。");
   revalidatePath(`/events/${parsed.data.sourceEventId}`);
+  if (parsed.data.returnEventId) revalidatePath(`/events/${parsed.data.returnEventId}`);
 }
 
 export async function archiveEvent(formData: FormData) {

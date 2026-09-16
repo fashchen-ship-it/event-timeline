@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { createEventReference, deleteEventReference, type ReferenceActionState } from "@/lib/events/actions";
-import type { EventReference } from "@/lib/events/types";
+import { EVENT_STATUS_LABELS, type EventReference } from "@/lib/events/types";
 import { PixelIcon } from "@/components/ui/pixel";
 
 type ReferenceTarget = { id: string; title: string };
@@ -34,12 +34,20 @@ function RelationList({ eventId, relations, direction }: { eventId: string; rela
   );
 }
 
+function RelatedProjectCards({ eventId, relations }: { eventId: string; relations: EventReference[] }) {
+  if (!relations.length) return null;
+  return <div className="mt-3 grid gap-3 sm:grid-cols-2">{relations.map((relation) => <article className="pixel-card p-4" key={relation.id}>
+    <Link className="block" href={`/events/${relation.event_id}`}><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center border-2 border-[var(--line)] bg-[var(--paper-deep)] text-lg text-[var(--forest)]">{relation.event_icon || <PixelIcon className="size-5" name="briefcase" />}</span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><h4 className="pixel-title truncate text-base">{relation.event_title}</h4><PixelIcon className="mt-0.5 size-4 shrink-0 text-[var(--soil)]" name="link" /></div><p className="mt-1 text-xs font-bold text-[var(--forest)]">{EVENT_STATUS_LABELS[relation.event_status]}</p></div></div><div className="mt-3 flex flex-wrap gap-2 border-t-2 border-dashed border-[var(--line)] pt-3 text-xs font-bold text-[var(--soil)]"><span>开始于 {relation.event_start_date}</span><span>{relation.node_count} 个节点</span></div>{relation.note && <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--soil)]">{relation.note}</p>}</Link>
+    <form action={deleteEventReference} className="mt-3"><input name="sourceEventId" type="hidden" value={relation.event_id} /><input name="referenceId" type="hidden" value={relation.id} /><input name="returnEventId" type="hidden" value={eventId} /><button aria-label={`移除项目 ${relation.event_title}`} className="text-xs font-bold text-[var(--brick)] underline underline-offset-2" type="submit">移除关联</button></form>
+  </article>)}</div>;
+}
+
 export function EventRelations({ eventId, targets, outgoing, incoming }: EventRelationsProps) {
   const [state, formAction, isPending] = useActionState(createEventReference, initialState);
   return (
     <section className="pixel-paper mt-8 p-5 sm:p-6">
       <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sage)]" name="link" /><h2 className="pixel-title text-xl">关联事线</h2></div>
-      <p className="mt-2 text-sm leading-6 text-[var(--soil)]">把有关联的事串在一起，之后可以从这里来回查看。</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--soil)]">把有关联的事串在一起，之后可以从这里来回查看。若要把项目放进总事线，请在项目里选择总事线。</p>
 
       {targets.length > 0 ? (
         <form action={formAction} className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
@@ -55,7 +63,7 @@ export function EventRelations({ eventId, targets, outgoing, incoming }: EventRe
       {(state.error || state.success) && <p className={`mt-3 text-sm ${state.error ? "text-[var(--brick)]" : "text-[var(--forest)]"}`}>{state.error ?? state.success}</p>}
 
       {outgoing.length > 0 && <div className="mt-6"><h3 className="text-sm font-bold text-[var(--ink)]">这件事关联到</h3><RelationList direction="outgoing" eventId={eventId} relations={outgoing} /></div>}
-      {incoming.length > 0 && <div className="mt-6"><h3 className="text-sm font-bold text-[var(--ink)]">也被这些事关联</h3><RelationList direction="incoming" eventId={eventId} relations={incoming} /></div>}
+      {incoming.length > 0 && <div className="mt-6"><div className="flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-[var(--ink)]">关联项目</h3><span className="pixel-chip">{incoming.length} 项</span></div><p className="mt-2 text-sm leading-6 text-[var(--soil)]">这些事线把当前事线作为共同的总线；点开卡片即可查看各自完整记录。</p><RelatedProjectCards eventId={eventId} relations={incoming} /></div>}
     </section>
   );
 }
