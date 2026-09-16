@@ -19,7 +19,8 @@ export function TimelineNodeCard({ eventId, node }: { eventId: string; node: Tim
   return (
     <li className="relative pl-9 sm:pl-11" data-timeline-node>
       <span className={`pixel-node-marker ${node.is_important ? "pixel-node-marker-important" : ""}`}>{node.is_important && <PixelIcon className="size-3 text-[#fff9ed]" name="star" />}</span>
-      <article className={`pixel-card p-4 sm:p-5 ${node.is_important ? "border-[var(--brick)] bg-[#fff6e6]" : ""}`} id={`node-${node.id}`}>
+      <article className={`record-note pixel-card p-4 sm:p-5 ${node.is_important ? "record-note-important border-[var(--brick)] bg-[#fff6e6]" : ""}`} id={`node-${node.id}`}>
+        <span aria-hidden className="record-note-pin" />
         <div className="flex items-start justify-between gap-4"><div><p className="pixel-eyebrow flex items-center gap-1.5"><PixelIcon className="size-3.5" name="calendar" />{dateLabel(node.event_date, node.event_time)}</p><h2 className="pixel-title mt-2 text-lg sm:text-xl">{node.title}</h2></div><Link aria-label="编辑节点" className="pixel-button pixel-button-secondary min-h-9 shrink-0 px-2.5 text-sm" href={`/events/${eventId}/nodes/${node.id}/edit`}><PixelIcon className="size-4" name="edit" />编辑</Link></div>
         {node.is_important && <p className="pixel-chip mt-3 bg-[#f7d88b] text-[#7d5321]"><PixelIcon className="size-3" name="star" />重要节点</p>}
         {node.content && <div className="mt-4 text-base leading-7 text-[var(--soil)]">{longContent ? <details><summary className="cursor-pointer font-bold text-[var(--forest)]">展开详细内容</summary><p className="mt-3 whitespace-pre-wrap">{node.content}</p></details> : <p className="whitespace-pre-wrap">{node.content}</p>}</div>}
