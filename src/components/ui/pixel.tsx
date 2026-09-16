@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 export type PixelIconName = "archive" | "calendar" | "edit" | "file" | "home" | "hourglass" | "journal" | "link" | "plus" | "search" | "sprout" | "star" | "user" | "wheat";
-export type PixelDoodleName = "bloom" | "cat" | "dog" | "field" | "flag";
 
 type PixelIconProps = { name: PixelIconName; className?: string; label?: string };
 
@@ -25,18 +24,6 @@ export function PixelIcon({ name, className = "", label }: PixelIconProps) {
   }[name];
 
   return <svg aria-hidden={label ? undefined : true} aria-label={label} className={className} role={label ? "img" : undefined} viewBox="0 0 16 16">{label && <title>{label}</title>}{art}</svg>;
-}
-
-export function PixelDoodle({ name, className = "" }: { name: PixelDoodleName; className?: string }) {
-  const art = {
-    bloom: <><path fill="#b86950" d="M13 2h6v6h-6zM6 9h7v7H6zM19 9h7v7h-7zM13 16h6v7h-6z" /><path fill="#d6a54a" d="M13 9h6v7h-6z" /><path fill="#416b49" d="M14 23h4v7h-4zM8 26h6v3H8zM18 26h6v3h-6z" /></>,
-    cat: <><path fill="#3c3025" d="M5 8h4V4h4v3h6V4h4v4h4v18H5z" /><path fill="#e5b77e" d="M9 8h4V6h2v4h2V6h2v2h4v15H9z" /><path fill="#fff0d4" d="M12 16h8v6h-8z" /><path fill="#3c3025" d="M12 13h2v2h-2zM20 13h2v2h-2zM16 16h2v2h-2zM9 19h4v2H9zM20 19h4v2h-4zM3 23h10v2H3zM19 23h10v2H19z" /><path fill="#b86950" d="M15 8h2v2h-2z" /></>,
-    dog: <><path fill="#3c3025" d="M6 7h5V4h4v3h6V3h5v13h-3v13H8V16H5V3h1z" /><path fill="#c98557" d="M9 9h4V7h2v3h2V7h2v2h3v16H9z" /><path fill="#fff0d4" d="M12 17h8v7h-8z" /><path fill="#3c3025" d="M12 14h2v2h-2zM19 14h2v2h-2zM16 18h2v2h-2zM14 22h2v2h-2zM18 22h2v2h-2z" /><path fill="#8da77a" d="M5 5h3v8H5z" /></>,
-    field: <><path fill="#d6a54a" d="M2 2h9v9H2z" /><path fill="#fff6d6" d="M5 3h3v3H5z" /><path fill="#a9c9d7" d="M13 2h17v16H13z" /><path fill="#8da77a" d="M2 20h28v10H2z" /><path fill="#416b49" d="M4 17h4v10H4zM9 13h4v14H9zM18 16h4v11h-4zM23 12h4v15h-4z" /><path fill="#644632" d="M2 27h28v3H2z" /></>,
-    flag: <><path fill="#644632" d="M4 2h4v28H4z" /><path fill="#b86950" d="M8 3h18v11H8z" /><path fill="#f4d892" d="M12 6h8v3h-8z" /><path fill="#8da77a" d="M1 26h12v4H1z" /></>,
-  }[name];
-
-  return <svg aria-hidden className={className} shapeRendering="crispEdges" viewBox="0 0 32 32">{art}</svg>;
 }
 
 export function PageShell({ children, className = "" }: { children: ReactNode; className?: string }) {
