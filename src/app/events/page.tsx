@@ -35,8 +35,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const visibleEvents = sortEvents(selectedStatus === "all" ? filteredEvents : filteredEvents.filter((event) => event.status === selectedStatus), selectedSort);
   const visibleEventIds = new Set(visibleEvents.map((event) => event.id));
   const visibleRecentEvents = recentEvents.filter((event) => visibleEventIds.has(event.id));
-  const pinnedEvents = visibleEvents.filter((event) => event.is_pinned);
-  const activeEvents = visibleEvents.filter((event) => event.status === "active" && !event.is_pinned);
+  const activeEvents = visibleEvents.filter((event) => event.status === "active");
+  const pinnedEvents = visibleEvents.filter((event) => event.is_pinned && event.status !== "active");
   const otherEvents = visibleEvents.filter((event) => event.status !== "active" && !event.is_pinned);
   const batchFormId = "batch-archive-events";
 
@@ -68,12 +68,22 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         </form>
       </header>
 
-      <PixelCompanionShelf collections={collections} />
-
       {!events.length ? (
         <div className="mt-8"><PixelEmptyState icon="sprout" title="还没有正在发生的事。">创建一条事件线，记录它是怎么一步步走到今天的。<Link className="pixel-button pixel-button-primary mt-5 min-h-11 px-4 text-sm" href="/events/new"><PixelIcon className="size-4" name="plus" />新建事件</Link><p className="mt-3 text-xs opacity-70">当前账号：{user.email}</p></PixelEmptyState></div>
       ) : !visibleEvents.length ? <div className="mt-8"><PixelEmptyState icon="journal" title="没有符合筛选的事线。">换一个分类或状态，或者清除筛选后再看看。</PixelEmptyState></div> : (
         <div className="mt-8 space-y-9">
+          <section aria-labelledby="active-events-heading">
+            <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sage)]" name="sprout" /><h2 className="pixel-title text-xl" id="active-events-heading">正在进行</h2></div><span className="pixel-chip">{activeEvents.length} 条</span></div>
+            {activeEvents.length ? <div className="mt-4 space-y-4">{activeEvents.map((event) => <EventCard batchFormId={batchFormId} event={event} key={event.id} />)}</div> : <p className="pixel-empty mt-4 text-sm text-[var(--soil)]">当前筛选下没有进行中的事件。</p>}
+          </section>
+
+          <PixelCompanionShelf collections={collections} />
+
+          <form action={batchUpdateEventStatus} className="pixel-paper flex flex-wrap items-center justify-between gap-3 p-3" id={batchFormId}>
+            <p className="text-sm leading-6 text-[var(--soil)]">勾选事件后，可批量更新它们的状态。</p>
+            <div className="flex gap-2"><select aria-label="批量设置状态" className="pixel-select min-h-10 py-2 text-sm" defaultValue="archived" name="status"><option value="active">设为进行中</option><option value="paused">设为已暂停</option><option value="completed">设为已完成</option><option value="archived">设为已归档</option></select><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit"><PixelIcon className="size-4" name="edit" />批量更新</button></div>
+          </form>
+
           {visibleRecentEvents.length > 0 && (
             <section>
               <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--wheat)]" name="calendar" /><h2 className="pixel-title text-xl">最近翻看</h2></div>
@@ -82,20 +92,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
               </div>
             </section>
           )}
-          <form action={batchUpdateEventStatus} className="pixel-paper flex flex-wrap items-center justify-between gap-3 p-3" id={batchFormId}>
-            <p className="text-sm leading-6 text-[var(--soil)]">勾选事件后，可批量更新它们的状态。</p>
-            <div className="flex gap-2"><select aria-label="批量设置状态" className="pixel-select min-h-10 py-2 text-sm" defaultValue="archived" name="status"><option value="active">设为进行中</option><option value="paused">设为已暂停</option><option value="completed">设为已完成</option><option value="archived">设为已归档</option></select><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit"><PixelIcon className="size-4" name="edit" />批量更新</button></div>
-          </form>
           {pinnedEvents.length > 0 && (
             <section>
               <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[#a97d30]" name="star" /><h2 className="pixel-title text-xl">置顶事线</h2></div>
               <div className="mt-4 space-y-4">{pinnedEvents.map((event) => <EventCard batchFormId={batchFormId} event={event} key={event.id} />)}</div>
             </section>
           )}
-          <section>
-            <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sage)]" name="sprout" /><h2 className="pixel-title text-xl">正在进行</h2></div>
-            {activeEvents.length ? <div className="mt-4 space-y-4">{activeEvents.map((event) => <EventCard batchFormId={batchFormId} event={event} key={event.id} />)}</div> : <p className="pixel-empty mt-4 text-sm text-[var(--soil)]">暂时没有未置顶的进行中事件。</p>}
-          </section>
           {otherEvents.length > 0 && <section><div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--wheat)]" name="journal" /><h2 className="pixel-title text-xl">其他记录</h2></div><div className="mt-4 space-y-4">{otherEvents.map((event) => <EventCard batchFormId={batchFormId} event={event} key={event.id} />)}</div></section>}
         </div>
       )}
