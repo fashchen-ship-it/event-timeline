@@ -42,9 +42,9 @@ export function EventCard({ event, batchFormId }: { event: EventSummary; batchFo
       <div className="event-card-meta mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 text-xs font-medium text-[var(--soil)]">
         <span className="inline-flex items-center gap-1"><PixelIcon className="size-3.5 text-[var(--sage)]" name="calendar" />始于 {dateLabel(event.start_date)}</span>
         <span className="inline-flex items-center gap-1"><PixelIcon className="size-3.5 text-[var(--sage)]" name="journal" />{nodeCount} 个节点</span>
-        {event.collection && <span className="pixel-chip" style={{ backgroundColor: `${event.collection.color}26`, color: event.collection.color }}><span className="size-2 rounded-sm border border-current" />{event.collection.name}</span>}
+        {event.collection && <span className="category-ribbon pixel-chip" style={{ backgroundColor: `${event.collection.color}26`, color: event.collection.color }}><span className="size-2 rounded-sm border border-current" />{event.collection.name}</span>}
       </div>
-      {tags.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{tags.map((tag) => <span className="pixel-chip" key={tag}>{tag}</span>)}</div>}
+      {tags.length > 0 && <div className="event-card-tags mt-3 flex flex-wrap gap-2">{tags.map((tag) => <span className="pixel-chip" key={tag}>#{tag}</span>)}</div>}
       {event.status !== "archived" && (
         <div className="mt-4 flex justify-end gap-2">
           <form action={setEventPinned}>

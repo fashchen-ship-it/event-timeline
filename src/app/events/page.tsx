@@ -7,7 +7,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { getEventCollections, getEvents, getRecentEvents } from "@/lib/events/queries";
 import { EVENT_STATUS_LABELS, EVENT_STATUSES, type EventStatus } from "@/lib/events/types";
 import { createClient } from "@/lib/supabase/server";
-import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
+import { PageShell, PixelDoodle, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +42,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   return (
     <PageShell className="ledger-page">
       <header className="pixel-paper ledger-cover p-5 sm:p-7">
+        <PixelDoodle className="ledger-field-doodle" name="field" />
+        <PixelDoodle className="ledger-cat-doodle" name="cat" />
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="pixel-eyebrow">EVENT LOGBOOK</p>

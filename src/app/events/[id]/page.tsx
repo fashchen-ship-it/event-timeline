@@ -8,7 +8,7 @@ import { EventStatusSwitcher } from "@/components/events/event-status-switcher";
 import { TimelineNodeCard } from "@/components/timeline/timeline-node";
 import { CompactNodeList } from "@/components/timeline/compact-node-list";
 import { NodeFinder } from "@/components/timeline/node-finder";
-import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
+import { PageShell, PixelDoodle, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +39,8 @@ export default async function EventDetailPage({ params, searchParams }: { params
     <PageShell className="dossier-page">
       <Link className="inline-flex items-center gap-1 text-sm font-bold text-[var(--forest)] underline underline-offset-4" href="/events"><span aria-hidden>←</span> 返回事件</Link>
       <header className="pixel-paper dossier-sheet mt-5 p-5 sm:p-7">
+        <PixelDoodle className="dossier-bloom-doodle" name="bloom" />
+        <PixelDoodle className="dossier-dog-doodle" name="dog" />
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="dossier-seal grid size-12 shrink-0 place-items-center text-2xl text-[var(--forest)]">{event.icon || <PixelIcon className="size-6" name="journal" />}</span>
@@ -56,7 +58,7 @@ export default async function EventDetailPage({ params, searchParams }: { params
       <section className="record-section mt-9">
         {nodes.length > 0 && <NodeFinder />}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sage)]" name="journal" /><h2 className="pixel-title text-xl">记录小径</h2></div>
+          <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sage)]" name="journal" /><h2 className="pixel-title text-xl">记录小径</h2><PixelDoodle className="trail-flag-doodle" name="flag" /></div>
           <div className="flex flex-wrap gap-2"><div className="flex border-2 border-[var(--line)] bg-[var(--paper-deep)] p-1 text-sm font-bold"><Link className={`rounded px-3 py-2 ${newestFirst ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: "desc", important: importantOnly ? "1" : undefined, view: listView ? "list" : "timeline" })}>最新在前</Link><Link className={`rounded px-3 py-2 ${!newestFirst ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: "asc", important: importantOnly ? "1" : undefined, view: listView ? "list" : "timeline" })}>最早在前</Link></div><div className="flex border-2 border-[var(--line)] bg-[var(--paper-deep)] p-1 text-sm font-bold"><Link className={`rounded px-3 py-2 ${!listView ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: newestFirst ? "desc" : "asc", important: importantOnly ? "1" : undefined, view: "timeline" })}>小径</Link><Link className={`rounded px-3 py-2 ${listView ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: newestFirst ? "desc" : "asc", important: importantOnly ? "1" : undefined, view: "list" })}>列表</Link></div></div>
         </div>
         <div className="mt-4"><Link className={`pixel-button min-h-10 px-3 text-sm ${importantOnly ? "border-[var(--brick)] bg-[#f9dfad] text-[#7d5321] shadow-[2px_2px_0_#b86950]" : "pixel-button-secondary"}`} href={filterUrl({ order: newestFirst ? "desc" : "asc", important: importantOnly ? undefined : "1", view: listView ? "list" : "timeline" })}>{importantOnly ? "查看全部节点" : "只看重要节点"}</Link></div>
