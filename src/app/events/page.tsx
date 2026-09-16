@@ -42,15 +42,13 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
 
   return (
     <PageShell>
-      <header className="pixel-paper pixel-events-header p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="pixel-eyebrow">EVENT LOGBOOK</p>
-            <h1 className="pixel-title mt-2 text-3xl sm:text-4xl">我的事线</h1>
-            <div className="mt-2 flex items-end justify-between gap-3"><p className="max-w-[12rem] text-sm leading-6 text-[var(--soil)]">把正在发生的事，慢慢记下来。</p><PixelHeaderCompanions /></div>
-          </div>
-          <div className="flex shrink-0 gap-2"><Link className="pixel-button pixel-button-primary min-h-10 px-3 text-sm" href="/quick"><PixelIcon className="size-4" name="plus" /><span className="hidden sm:inline">快记</span></Link><form action={signOut}><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">退出</button></form></div>
+      <header className="pixel-paper pixel-events-header relative p-5 sm:p-6">
+        <div className="pr-40 sm:pr-48">
+          <p className="pixel-eyebrow">EVENT LOGBOOK</p>
+          <h1 className="pixel-title mt-2 text-3xl sm:text-4xl">我的事线</h1>
         </div>
+        <div className="absolute right-5 top-5 flex gap-2 sm:right-6 sm:top-6"><Link className="pixel-button pixel-button-primary min-h-10 px-3 text-sm" href="/quick"><PixelIcon className="size-4" name="plus" /><span className="hidden sm:inline">快记</span></Link><form action={signOut}><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">退出</button></form></div>
+        <div className="mt-2 flex items-end gap-3"><p className="min-w-0 flex-1 text-sm leading-6 text-[var(--soil)]">把正在发生的事，慢慢记下来。</p><PixelHeaderCompanions /></div>
         <div className="mt-5">
           <form action="/search" className="flex gap-2">
             <label className="sr-only" htmlFor="timeline-search">搜索事件和节点</label>
