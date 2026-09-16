@@ -33,7 +33,7 @@ export default async function InsightsPage() {
         <p className="pixel-eyebrow">LIFE ALMANAC</p>
         <div className="mt-2 flex items-start justify-between gap-3">
           <div><h1 className="pixel-title text-3xl sm:text-4xl">记录统计</h1><p className="mt-2 text-sm leading-6 text-[var(--soil)]">不是评价生活，只是看看这一段日子留下了多少真实的痕迹。</p></div>
-          <Link className="pixel-button pixel-button-secondary min-h-10 shrink-0 px-3 text-sm" href="/journal">全部记录</Link>
+          <Link className="pixel-button pixel-button-secondary min-h-10 shrink-0 px-3 text-sm" href="/calendar">事线月历</Link>
         </div>
       </header>
 
