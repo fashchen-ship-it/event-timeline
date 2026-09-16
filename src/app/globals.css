@@ -133,6 +133,15 @@ a.pixel-calendar-day:hover { background: var(--wheat-light); }
 .pixel-day-flow-item { position: relative; padding-bottom: 1rem; }
 .pixel-day-flow-item::before { position: absolute; top: 1.15rem; left: -1.62rem; width: 0.75rem; height: 0.75rem; border: 2px solid var(--card); border-radius: 2px; background: var(--wheat); box-shadow: 0 0 0 2px var(--forest); content: ""; }
 .pixel-day-flow-gap { margin: 0 0 0.6rem -0.25rem; color: var(--soil); font-size: 0.72rem; font-weight: 800; }
+.pixel-week-strip { border: 2px solid var(--line); border-radius: 7px; background: var(--paper-deep); padding: 0.7rem; }
+.pixel-week-nav { color: var(--forest); font-size: 0.78rem; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.pixel-week-nav-disabled { color: var(--soil); opacity: 0.45; text-decoration: none; }
+.pixel-week-day { position: relative; display: flex; min-height: 3.6rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; border: 1px solid transparent; border-radius: 5px; color: var(--soil); font-size: 0.68rem; font-weight: 800; }
+a.pixel-week-day { background: var(--card); transition: background-color 120ms ease, transform 120ms ease; }
+a.pixel-week-day:hover { background: var(--wheat-light); transform: translateY(-1px); }
+.pixel-week-day strong { color: var(--ink); font-size: 0.95rem; }
+.pixel-week-day i { position: absolute; top: 0.2rem; right: 0.2rem; min-width: 0.85rem; border-radius: 999px; background: var(--sage); color: white; font-size: 0.58rem; font-style: normal; line-height: 0.85rem; text-align: center; }
+.pixel-week-day-active { border-color: var(--forest) !important; background: #e4eed9 !important; box-shadow: inset 0 0 0 1px var(--forest); }
 
 @media (max-width: 420px) { .pixel-companion-shelf { grid-template-columns: minmax(0, 1fr) 8.5rem; min-height: 10.4rem; } .pixel-companion-copy { padding: 1rem 0 0.9rem 1rem; } .pixel-companion-title { font-size: 0.82rem; } .pixel-companion-labels { gap: 0.35rem; margin-top: 0.6rem; } .pixel-label-sticker, .pixel-category-sticker { padding-inline: 0.38rem; font-size: 0.66rem; } .pixel-companion-cat { right: 2.4rem; width: 5.1rem; } .pixel-companion-dog { right: -0.55rem; width: 4.8rem; } }
 

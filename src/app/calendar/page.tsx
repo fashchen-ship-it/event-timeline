@@ -43,6 +43,16 @@ function timeGapLabel(previous: GlobalTimelineNode, current: GlobalTimelineNode)
   return remainder ? `${hours} 小时 ${remainder} 分钟后` : `${hours} 小时后`;
 }
 
+function addDays(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00`);
+  value.setDate(value.getDate() + days);
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
+function calendarHref(date: string) {
+  return `/calendar?month=${date.slice(0, 7)}&date=${date}`;
+}
+
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ month?: string; date?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -60,6 +70,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const currentMonth = new Date().toISOString().slice(0, 7);
   const selectedMonth = isMonth(filters.month) ? filters.month : months[0] ?? currentMonth;
   const monthNodes = nodes.filter((node) => node.event_date.startsWith(selectedMonth));
+  const allNodesByDate = nodes.reduce<Map<string, typeof nodes>>((map, node) => {
+    const entries = map.get(node.event_date) ?? [];
+    entries.push(node);
+    map.set(node.event_date, entries);
+    return map;
+  }, new Map());
   const nodesByDate = monthNodes.reduce<Map<string, typeof nodes>>((map, node) => {
     const entries = map.get(node.event_date) ?? [];
     entries.push(node);
@@ -70,6 +86,11 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const requestedDate = filters.date?.startsWith(`${selectedMonth}-`) ? filters.date : undefined;
   const selectedDate = requestedDate && nodesByDate.has(requestedDate) ? requestedDate : datesWithNodes[0] ?? null;
   const selectedNodes = selectedDate ? [...(nodesByDate.get(selectedDate) ?? [])].sort((a, b) => (a.event_time ?? "00:00").localeCompare(b.event_time ?? "00:00")) : [];
+  const recordedDates = [...allNodesByDate.keys()].sort();
+  const selectedIndex = selectedDate ? recordedDates.indexOf(selectedDate) : -1;
+  const previousDate = selectedIndex > 0 ? recordedDates[selectedIndex - 1] : null;
+  const nextDate = selectedIndex >= 0 && selectedIndex < recordedDates.length - 1 ? recordedDates[selectedIndex + 1] : null;
+  const weekDates = selectedDate ? Array.from({ length: 7 }, (_, index) => addDays(selectedDate, index - 3)) : [];
 
   return (
     <PageShell>
@@ -108,6 +129,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
         <section className="mt-7" id="day-records">
           <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sage)]" name="journal" /><h2 className="pixel-title text-xl">{selectedDate ? `${dateLabel(selectedDate)} 的记录` : "这个月还没有记录"}</h2></div>{selectedNodes.length > 0 && <span className="pixel-chip">当天记录流</span>}</div>
+          {selectedDate && <nav aria-label="切换记录日期" className="pixel-week-strip mt-4"><div className="flex items-center justify-between gap-2"><span>{previousDate ? <Link className="pixel-week-nav" href={calendarHref(previousDate)}>‹ 前一记录日</Link> : <span className="pixel-week-nav pixel-week-nav-disabled">‹ 前一记录日</span>}</span><span>{nextDate ? <Link className="pixel-week-nav" href={calendarHref(nextDate)}>后一记录日 ›</Link> : <span className="pixel-week-nav pixel-week-nav-disabled">后一记录日 ›</span>}</span></div><div className="mt-3 grid grid-cols-7 gap-1">{weekDates.map((date) => { const entries = allNodesByDate.get(date) ?? []; const weekday = weekdays[new Date(`${date}T12:00:00`).getDay()]; const active = date === selectedDate; const content = <><span>{weekday}</span><strong>{Number(date.slice(-2))}</strong>{entries.length > 0 && <i>{entries.length}</i>}</>; return entries.length ? <Link aria-label={`${dateLabel(date)}，${entries.length} 条记录`} className={`pixel-week-day ${active ? "pixel-week-day-active" : ""}`} href={calendarHref(date)} key={date}>{content}</Link> : <span className="pixel-week-day" key={date}>{content}</span>; })}</div></nav>}
           {selectedNodes.length ? <ol className="pixel-day-flow mt-4">{selectedNodes.map((node, index) => <li className="pixel-day-flow-item" key={node.id}>{index > 0 && timeGapLabel(selectedNodes[index - 1], node) && <p className="pixel-day-flow-gap">{timeGapLabel(selectedNodes[index - 1], node)}</p>}<Link className="pixel-card block p-4" href={`/events/${node.event?.id}#node-${node.id}`}><div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center border-2 border-[var(--line)] bg-[var(--paper-deep)] text-[var(--forest)]">{node.event?.icon || <PixelIcon className="size-4" name={node.is_important ? "star" : "journal"} />}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><p className="truncate text-xs font-bold text-[var(--sage)]">{node.event?.title ?? "未命名事线"}</p>{node.event_time && <time className="shrink-0 text-xs font-bold text-[var(--soil)]">{node.event_time.slice(0, 5)}</time>}</div><h3 className="mt-1 font-bold text-[var(--ink)]">{node.title}</h3>{node.content && <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--soil)]">{node.content}</p>}</div></div></Link></li>)}</ol> : <p className="pixel-empty mt-4 text-sm text-[var(--soil)]">点击带小圆点的日期，查看当天留下的记录。</p>}
         </section>
       </> : <div className="mt-8"><PixelEmptyState icon="calendar" title="月历还没有可以放进去的记录。">先在一条事线上留下一次节点，发生过的日子会出现在这里。</PixelEmptyState></div>}
