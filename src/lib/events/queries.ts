@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { EditableNode, EventDetail, GlobalTimelineNode, TimelineNode } from "@/lib/timeline/types";
 import type { NodeReferenceTarget } from "@/lib/timeline/types";
-import type { EditableEvent, EventCollection, EventReference, EventSummary } from "./types";
+import type { EditableEvent, EventCollection, EventReference, EventSummary, ProjectEventSummary } from "./types";
 
 const eventSummarySelect = "id, title, description, status, start_date, icon, updated_at, is_pinned, collection_id, collection:event_collections!events_collection_id_fkey(id, name, color), event_nodes(count), event_tags(tag:tags(id, name))";
 
@@ -16,6 +16,17 @@ export async function getEvents() {
     .order("updated_at", { ascending: false });
   if (error) throw new Error("无法读取事件，请稍后刷新重试。");
   return (data ?? []) as unknown as EventSummary[];
+}
+
+export async function getEventsForProjects() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, title, status, icon, updated_at, collection_id")
+    .neq("status", "archived")
+    .order("updated_at", { ascending: false });
+  if (error) throw new Error("无法读取项目分组，请稍后刷新重试。");
+  return (data ?? []) as ProjectEventSummary[];
 }
 
 export async function getArchivedEvents() {

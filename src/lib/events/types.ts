@@ -37,6 +37,8 @@ export type EventSummary = {
   event_tags: { tag: { id: string; name: string } | null }[];
 };
 
+export type ProjectEventSummary = Pick<EventSummary, "id" | "title" | "status" | "icon" | "updated_at" | "collection_id">;
+
 export type EditableEvent = Pick<
   EventSummary,
   "id" | "title" | "description" | "status" | "start_date" | "icon" | "collection_id" | "collection"

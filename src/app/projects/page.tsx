@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { PageShell, PixelEmptyState, PixelIcon, type PixelIconName } from "@/components/ui/pixel";
-import { getEventCollections, getEvents } from "@/lib/events/queries";
+import { getEventCollections, getEventsForProjects } from "@/lib/events/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export default async function ProjectsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [collections, events] = await Promise.all([getEventCollections(), getEvents()]);
+  const [collections, events] = await Promise.all([getEventCollections(), getEventsForProjects()]);
   const groups = collections.map((collection) => {
     const groupEvents = events.filter((event) => event.collection_id === collection.id).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     return { collection, events: groupEvents, activeCount: groupEvents.filter((event) => event.status === "active").length, latest: groupEvents[0] ?? null };
@@ -46,10 +46,11 @@ export default async function ProjectsPage() {
         <p className="pixel-eyebrow">PROJECT SHELVES</p>
         <div className="mt-2 flex items-start justify-between gap-3">
           <div><h1 className="pixel-title text-3xl sm:text-4xl">项目分组</h1><p className="mt-2 text-sm leading-6 text-[var(--soil)]">按主题收好事线；打开一个分组，就能继续记录它。</p></div>
-          <Link className="pixel-button pixel-button-secondary min-h-10 shrink-0 px-3 text-sm" href="/events"><PixelIcon className="size-4" name="journal" />事线</Link>
+          <div className="flex shrink-0 gap-2"><Link aria-label="管理项目分类" className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href="/me#collection-management"><PixelIcon className="size-4" name="edit" /><span className="hidden sm:inline">管理</span></Link><Link className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href="/events"><PixelIcon className="size-4" name="journal" />事线</Link></div>
         </div>
       </header>
 
+      <p className="mt-4 text-xs leading-6 text-[var(--soil)]">删除项目分类不会删除里面的事线；它们会保留并移动到“尚未分组”。</p>
       {groups.length ? <>
         <section className="mt-7" aria-labelledby="project-groups-heading">
           <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--wheat)]" name="briefcase" /><h2 className="pixel-title text-xl" id="project-groups-heading">我的项目</h2></div><span className="pixel-chip">{groups.length} 组</span></div>

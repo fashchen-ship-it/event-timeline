@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 export type PixelIconName = "archive" | "briefcase" | "calendar" | "coin" | "edit" | "file" | "heart" | "home" | "hourglass" | "journal" | "leaf" | "link" | "map" | "plus" | "search" | "sprout" | "star" | "study" | "user" | "wheat";
 
@@ -33,7 +34,7 @@ export function PixelIcon({ name, className = "", label }: PixelIconProps) {
 }
 
 export function PageShell({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <main className={`pixel-page ${className}`}>{children}</main>;
+  return <main className={`pixel-page ${className}`}><nav aria-label="桌面主导航" className="mb-6 hidden items-center gap-2 border-b-2 border-dashed border-[var(--line)] pb-4 sm:flex"><Link className="pixel-desktop-nav-link" href="/events">事线</Link><Link className="pixel-desktop-nav-link" href="/projects">项目</Link><Link className="pixel-desktop-nav-link" href="/calendar">月历</Link><Link className="pixel-desktop-nav-link" href="/archive">归档</Link><Link className="pixel-desktop-nav-link" href="/me">我的</Link></nav>{children}</main>;
 }
 
 export function PixelEmptyState({ icon, title, children }: { icon: PixelIconName; title: string; children?: ReactNode }) {
