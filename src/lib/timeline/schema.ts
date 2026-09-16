@@ -1,12 +1,7 @@
 import { z } from "zod";
 
 export const ALLOWED_FILE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "application/pdf",
-  "text/plain",
+  "image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf", "text/plain",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ] as const;
@@ -21,6 +16,8 @@ export const uploadSchema = z.object({
   fileSize: z.number().int().positive().max(MAX_FILE_SIZE),
 });
 
+const checklistItemSchema = z.object({ content: z.string().trim().min(1).max(240), isCompleted: z.boolean() });
+
 export const nodeFormSchema = z.object({
   id: z.string().uuid().optional(),
   eventId: z.string().uuid(),
@@ -31,19 +28,26 @@ export const nodeFormSchema = z.object({
   linkUrl: z.string().trim().url("请输入有效的网址。").max(2048, "网页链接过长。").optional(),
   tags: z.string().max(400, "标签内容过长。").optional(),
   isImportant: z.boolean(),
+  checklistItems: z.array(checklistItemSchema).max(12, "每个节点最多可有 12 个清单项。"),
+  referenceTargetEventId: z.string().uuid().optional(),
+  referenceTargetNodeId: z.string().uuid().optional(),
+  referenceNote: z.string().trim().max(300, "关联说明不能超过 300 个字符。").optional(),
   uploads: z.array(uploadSchema).max(MAX_ATTACHMENTS, `最多上传 ${MAX_ATTACHMENTS} 个附件。`),
 }).superRefine((value, context) => {
   if (parseTagNames(value.tags).some((name) => name.length > 30)) {
     context.addIssue({ code: "custom", path: ["tags"], message: "每个标签不能超过 30 个字符。" });
   }
+  if (Boolean(value.referenceTargetEventId) !== Boolean(value.referenceTargetNodeId)) {
+    context.addIssue({ code: "custom", path: ["referenceTargetNodeId"], message: "请选择要关联的具体节点。" });
+  }
 });
 
 export type NodeActionState = {
   error?: string;
-  fieldErrors?: Partial<Record<"title" | "eventDate" | "eventTime" | "content" | "linkUrl" | "tags", string>>;
+  fieldErrors?: Partial<Record<"title" | "eventDate" | "eventTime" | "content" | "linkUrl" | "tags" | "checklistItems" | "referenceTargetNodeId", string>>;
 };
 
 export function parseTagNames(value: string | undefined) {
   if (!value) return [];
-  return [...new Set(value.split(/[，,]/).map((name) => name.trim()).filter(Boolean))].slice(0, 12);
+  return [...new Set(value.split(/[,，]/).map((name) => name.trim()).filter(Boolean))].slice(0, 12);
 }

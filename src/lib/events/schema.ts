@@ -8,6 +8,7 @@ export const eventFormSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "请选择有效的开始日期。"),
   status: z.enum(EVENT_STATUSES),
   icon: z.string().trim().max(16, "图标最多可包含 16 个字符。").optional(),
+  collection: z.string().trim().max(30, "分类名称不能超过 30 个字符。").optional(),
   tags: z.string().max(400, "标签内容过长。").optional(),
 }).superRefine((value, context) => {
   if (parseTagNames(value.tags).some((name) => name.length > 30)) {
@@ -17,11 +18,10 @@ export const eventFormSchema = z.object({
 
 export type EventActionState = {
   error?: string;
-  fieldErrors?: Partial<Record<"title" | "description" | "startDate" | "icon" | "tags", string>>;
+  fieldErrors?: Partial<Record<"title" | "description" | "startDate" | "icon" | "collection" | "tags", string>>;
 };
 
 export function parseTagNames(value: string | undefined) {
   if (!value) return [];
-
-  return [...new Set(value.split(/[，,]/).map((name) => name.trim()).filter(Boolean))].slice(0, 12);
+  return [...new Set(value.split(/[,，]/).map((name) => name.trim()).filter(Boolean))].slice(0, 12);
 }

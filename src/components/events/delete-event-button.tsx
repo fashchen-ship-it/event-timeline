@@ -15,7 +15,7 @@ export function DeleteEventButton({ id }: { id: string }) {
       }}
     >
       <input name="id" type="hidden" value={id} />
-      <button className="min-h-11 rounded-xl border border-rose-200 px-4 text-sm font-medium text-rose-700 transition hover:bg-rose-50" type="submit">
+      <button className="pixel-button pixel-button-danger text-sm" type="submit">
         永久删除
       </button>
     </form>

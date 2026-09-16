@@ -1,15 +1,5 @@
 "use client";
 
 export default function GlobalError({ unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
-  return (
-    <html lang="zh-CN">
-      <body style={{ alignItems: "center", background: "#f7f6f2", color: "#292722", display: "flex", fontFamily: "system-ui, sans-serif", justifyContent: "center", margin: 0, minHeight: "100vh", padding: "24px" }}>
-        <main style={{ background: "white", border: "1px solid #e7e5e4", borderRadius: "24px", maxWidth: "420px", padding: "32px", textAlign: "center", width: "100%" }}>
-          <h1 style={{ fontSize: "22px", margin: 0 }}>应用暂时无法打开</h1>
-          <p style={{ color: "#57534e", lineHeight: 1.7 }}>请刷新或稍后重试。</p>
-          <button onClick={unstable_retry} style={{ background: "#292722", border: 0, borderRadius: "12px", color: "white", cursor: "pointer", fontSize: "16px", padding: "12px 20px" }} type="button">重试</button>
-        </main>
-      </body>
-    </html>
-  );
+  return <html lang="zh-CN"><body style={{ alignItems: "center", background: "#fbf3e3", color: "#3c3025", display: "flex", fontFamily: "PingFang SC, Microsoft YaHei, system-ui, sans-serif", justifyContent: "center", margin: 0, minHeight: "100vh", padding: "24px" }}><main style={{ background: "#fff9ed", border: "2px solid #c9a87b", borderRadius: "8px", boxShadow: "3px 3px 0 #76533c", maxWidth: "420px", padding: "32px", textAlign: "center", width: "100%" }}><p style={{ color: "#416b49", fontFamily: "monospace", fontSize: "12px", fontWeight: 800, letterSpacing: "0.14em", margin: 0 }}>A SMALL PAUSE</p><h1 style={{ fontSize: "22px", margin: "18px 0 0" }}>应用暂时无法打开</h1><p style={{ color: "#644632", lineHeight: 1.7 }}>请刷新或稍后再试。</p><button onClick={unstable_retry} style={{ background: "#416b49", border: "2px solid #644632", borderRadius: "6px", boxShadow: "2px 2px 0 #25442e", color: "#fffaf0", cursor: "pointer", fontSize: "16px", fontWeight: 700, padding: "12px 20px" }} type="button">再试一次</button></main></body></html>;
 }

@@ -16,7 +16,7 @@ export function DeleteNodeButton({ eventId, nodeId }: { eventId: string; nodeId:
     >
       <input name="eventId" type="hidden" value={eventId} />
       <input name="nodeId" type="hidden" value={nodeId} />
-      <button className="min-h-11 rounded-xl border border-rose-200 px-4 text-sm font-medium text-rose-700 transition hover:bg-rose-50" type="submit">删除节点</button>
+      <button className="pixel-button pixel-button-danger text-sm" type="submit">删除节点</button>
     </form>
   );
 }

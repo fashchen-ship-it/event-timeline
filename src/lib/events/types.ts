@@ -2,6 +2,19 @@ export const EVENT_STATUSES = ["active", "paused", "completed", "archived"] as c
 
 export type EventStatus = (typeof EVENT_STATUSES)[number];
 
+export type EventCollection = {
+  id: string;
+  name: string;
+  color: string;
+};
+
+export type EventReference = {
+  id: string;
+  event_id: string;
+  event_title: string;
+  note: string | null;
+};
+
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   active: "进行中",
   paused: "已暂停",
@@ -17,12 +30,16 @@ export type EventSummary = {
   start_date: string;
   icon: string | null;
   updated_at: string;
+  is_pinned: boolean;
+  collection_id: string | null;
+  collection: EventCollection | null;
   event_nodes: { count: number }[];
+  event_tags: { tag: { id: string; name: string } | null }[];
 };
 
 export type EditableEvent = Pick<
   EventSummary,
-  "id" | "title" | "description" | "status" | "start_date" | "icon"
+  "id" | "title" | "description" | "status" | "start_date" | "icon" | "collection_id" | "collection"
 > & {
   tags: { tag: { id: string; name: string } | null }[];
 };

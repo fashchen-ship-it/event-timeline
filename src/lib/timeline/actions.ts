@@ -12,10 +12,16 @@ type ParsedNodeForm =
 
 function formValues(formData: FormData) {
   let uploads: unknown = [];
+  let checklistItems: unknown = [];
   try {
     uploads = JSON.parse(String(formData.get("uploads") ?? "[]"));
   } catch {
     uploads = null;
+  }
+  try {
+    checklistItems = JSON.parse(String(formData.get("checklistItems") ?? "[]"));
+  } catch {
+    checklistItems = null;
   }
 
   return {
@@ -28,6 +34,10 @@ function formValues(formData: FormData) {
     linkUrl: formData.get("linkUrl") || undefined,
     tags: formData.get("tags") || undefined,
     isImportant: formData.get("isImportant") === "on",
+    checklistItems,
+    referenceTargetEventId: formData.get("referenceTargetEventId") || undefined,
+    referenceTargetNodeId: formData.get("referenceTargetNodeId") || undefined,
+    referenceNote: formData.get("referenceNote") || undefined,
     uploads,
   };
 }
@@ -47,6 +57,8 @@ function validationError(formData: FormData): ParsedNodeForm {
         content: fields.content?.[0],
         linkUrl: fields.linkUrl?.[0],
         tags: fields.tags?.[0],
+        checklistItems: fields.checklistItems?.[0],
+        referenceTargetNodeId: fields.referenceTargetNodeId?.[0],
       },
     },
   };
@@ -93,6 +105,64 @@ async function replaceNodeTags(
     .from("node_tags")
     .insert(tags.map((tag) => ({ node_id: nodeId, tag_id: tag.id, user_id: userId })));
   if (linkError) throw new Error("关联标签时出现问题，请重试。");
+}
+
+async function replaceNodeChecklist(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  nodeId: string,
+  eventId: string,
+  userId: string,
+  items: ReturnType<typeof nodeFormSchema.parse>["checklistItems"],
+) {
+  const { error: removeError } = await supabase.from("node_checklist_items").delete().eq("node_id", nodeId);
+  if (removeError && !items.length && ["42P01", "PGRST205"].includes(removeError.code)) return;
+  if (removeError) throw new Error("更新节点清单时出现问题，请重试。");
+  if (!items.length) return;
+
+  const { error } = await supabase.from("node_checklist_items").insert(
+    items.map((item, position) => ({
+      node_id: nodeId,
+      event_id: eventId,
+      user_id: userId,
+      content: item.content,
+      is_completed: item.isCompleted,
+      position,
+    })),
+  );
+  if (error) throw new Error("保存节点清单时出现问题，请重试。");
+}
+
+async function replaceNodeReference(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  nodeId: string,
+  eventId: string,
+  userId: string,
+  targetEventId: string | undefined,
+  targetNodeId: string | undefined,
+  note: string | undefined,
+) {
+  const { error: removeError } = await supabase.from("event_references").delete().eq("source_node_id", nodeId);
+  if (removeError) throw new Error("更新节点关联时出现问题，请重试。");
+  if (!targetEventId || !targetNodeId) return;
+  if (targetNodeId === nodeId) throw new Error("节点不能关联到自身。");
+
+  const { data: target } = await supabase
+    .from("event_nodes")
+    .select("id")
+    .eq("id", targetNodeId)
+    .eq("event_id", targetEventId)
+    .maybeSingle();
+  if (!target) throw new Error("找不到要关联的节点。");
+
+  const { error } = await supabase.from("event_references").insert({
+    user_id: userId,
+    source_event_id: eventId,
+    source_node_id: nodeId,
+    target_event_id: targetEventId,
+    target_node_id: targetNodeId,
+    note: note || null,
+  });
+  if (error) throw new Error("保存节点关联时出现问题，请重试。");
 }
 
 async function addAttachments(
@@ -158,6 +228,8 @@ export async function createNode(
 
   try {
     await replaceNodeTags(supabase, node.id, user.id, parseTagNames(parsed.data.tags));
+    await replaceNodeChecklist(supabase, node.id, parsed.data.eventId, user.id, parsed.data.checklistItems);
+    await replaceNodeReference(supabase, node.id, parsed.data.eventId, user.id, parsed.data.referenceTargetEventId, parsed.data.referenceTargetNodeId, parsed.data.referenceNote);
     await addAttachments(supabase, node.id, user.id, parsed.data.uploads);
   } catch {
     return { error: "节点已创建，但标签或附件保存失败。请打开编辑页后重试。" };
@@ -203,6 +275,8 @@ export async function updateNode(
 
   try {
     await replaceNodeTags(supabase, parsed.data.id, user.id, parseTagNames(parsed.data.tags));
+    await replaceNodeChecklist(supabase, parsed.data.id, parsed.data.eventId, user.id, parsed.data.checklistItems);
+    await replaceNodeReference(supabase, parsed.data.id, parsed.data.eventId, user.id, parsed.data.referenceTargetEventId, parsed.data.referenceTargetNodeId, parsed.data.referenceNote);
     await addAttachments(supabase, parsed.data.id, user.id, parsed.data.uploads);
   } catch {
     return { error: "节点已保存，但标签或附件保存失败。请重试。" };

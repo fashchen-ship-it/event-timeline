@@ -16,7 +16,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const isLogin = mode === "login";
 
   return (
-    <form action={formAction} className="mt-8 space-y-5" noValidate>
+    <form action={formAction} className="auth-pixel mt-8 space-y-5" noValidate>
       <div>
         <label className="mb-2 block text-sm font-medium text-stone-700" htmlFor="email">
           邮箱

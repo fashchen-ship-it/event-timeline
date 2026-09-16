@@ -1,12 +1,3 @@
 export default function Loading() {
-  return (
-    <main className="mx-auto min-h-screen w-full max-w-2xl px-5 py-8 sm:px-8">
-      <div className="h-4 w-28 animate-pulse rounded bg-stone-200" />
-      <div className="mt-4 h-9 w-40 animate-pulse rounded bg-stone-200" />
-      <div className="mt-9 space-y-4">
-        <div className="h-36 animate-pulse rounded-3xl bg-stone-200/80" />
-        <div className="h-28 animate-pulse rounded-3xl bg-stone-200/80" />
-      </div>
-    </main>
-  );
+  return <main className="pixel-page"><div className="pixel-paper p-5"><div className="h-3 w-28 animate-pulse bg-[var(--wheat-light)]" /><div className="mt-4 h-9 w-44 animate-pulse bg-[var(--paper-deep)]" /></div><div className="mt-7 space-y-4"><div className="pixel-card h-36 animate-pulse bg-[var(--card)]" /><div className="pixel-card h-28 animate-pulse bg-[var(--card)]" /></div></main>;
 }

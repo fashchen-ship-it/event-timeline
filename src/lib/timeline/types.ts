@@ -7,6 +7,31 @@ export type Attachment = {
   signed_url?: string;
 };
 
+export type NodeChecklistItem = {
+  id: string;
+  content: string;
+  is_completed: boolean;
+  position: number;
+};
+
+export type NodeReference = {
+  id: string;
+  target_event_id: string;
+  target_node_id: string;
+  target_title: string;
+  note: string | null;
+};
+
+export type NodeReferenceTarget = {
+  id: string;
+  title: string;
+  nodes: { id: string; title: string; event_date: string }[];
+};
+
+export type GlobalTimelineNode = Pick<TimelineNode, "id" | "title" | "content" | "event_date" | "event_time" | "is_important"> & {
+  event: { id: string; title: string; icon: string | null } | null;
+};
+
 export type TimelineNode = {
   id: string;
   title: string;
@@ -18,6 +43,8 @@ export type TimelineNode = {
   created_at: string;
   updated_at: string;
   attachments: Attachment[];
+  node_checklist_items: NodeChecklistItem[];
+  references: NodeReference[];
   node_tags: { tag: { id: string; name: string } | null }[];
 };
 
@@ -33,5 +60,5 @@ export type EventDetail = {
 
 export type EditableNode = Pick<
   TimelineNode,
-  "id" | "title" | "content" | "event_date" | "event_time" | "is_important" | "link_url" | "attachments" | "node_tags"
+  "id" | "title" | "content" | "event_date" | "event_time" | "is_important" | "link_url" | "attachments" | "node_checklist_items" | "references" | "node_tags"
 >;
