@@ -16,7 +16,9 @@ export type EventReference = {
   event_status: EventStatus;
   event_start_date: string;
   event_icon: string | null;
+  event_updated_at: string;
   node_count: number;
+  recent_nodes: { id: string; title: string; event_date: string; event_time: string | null; is_important: boolean }[];
 };
 
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {

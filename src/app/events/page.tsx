@@ -4,7 +4,7 @@ import { signOut } from "@/lib/auth/actions";
 import { batchUpdateEventStatus } from "@/lib/events/actions";
 import { EventCard } from "@/components/events/event-card";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { getEventCollections, getEvents, getRecentEvents } from "@/lib/events/queries";
+import { getEventCollections, getEvents } from "@/lib/events/queries";
 import { EVENT_STATUS_LABELS, EVENT_STATUSES, type EventStatus } from "@/lib/events/types";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
@@ -27,14 +27,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [events, recentEvents, collections, filters] = await Promise.all([getEvents(), getRecentEvents(), getEventCollections(), searchParams]);
+  const [events, collections, filters] = await Promise.all([getEvents(), getEventCollections(), searchParams]);
   const selectedCollection = filters.collection ?? "all";
   const selectedSort: EventSort = filters.sort === "start-desc" || filters.sort === "start-asc" || filters.sort === "title" ? filters.sort : "updated";
   const selectedStatus: EventStatus | "all" = EVENT_STATUSES.includes(filters.status as EventStatus) && filters.status !== "archived" ? filters.status as EventStatus : "all";
   const filteredEvents = selectedCollection === "all" ? events : selectedCollection === "none" ? events.filter((event) => !event.collection_id) : events.filter((event) => event.collection_id === selectedCollection);
   const visibleEvents = sortEvents(selectedStatus === "all" ? filteredEvents : filteredEvents.filter((event) => event.status === selectedStatus), selectedSort);
-  const visibleEventIds = new Set(visibleEvents.map((event) => event.id));
-  const visibleRecentEvents = recentEvents.filter((event) => visibleEventIds.has(event.id));
   const activeEvents = visibleEvents.filter((event) => event.status === "active");
   const pinnedEvents = visibleEvents.filter((event) => event.is_pinned && event.status !== "active");
   const otherEvents = visibleEvents.filter((event) => event.status !== "active" && !event.is_pinned);
@@ -82,14 +80,6 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             <div className="flex gap-2"><select aria-label="批量设置状态" className="pixel-select min-h-10 py-2 text-sm" defaultValue="archived" name="status"><option value="active">设为进行中</option><option value="paused">设为已暂停</option><option value="completed">设为已完成</option><option value="archived">设为已归档</option></select><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit"><PixelIcon className="size-4" name="edit" />批量更新</button></div>
           </form>
 
-          {visibleRecentEvents.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--wheat)]" name="calendar" /><h2 className="pixel-title text-xl">最近翻看</h2></div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {visibleRecentEvents.map((event) => <Link className="pixel-paper flex items-center gap-3 p-3 transition-transform hover:-translate-y-0.5" href={`/events/${event.id}`} key={event.id}><PixelIcon className="size-5 shrink-0 text-[var(--sage)]" name={event.is_pinned ? "star" : "journal"} /><span className="min-w-0 truncate font-bold text-[var(--ink)]">{event.title}</span></Link>)}
-              </div>
-            </section>
-          )}
           {pinnedEvents.length > 0 && (
             <section>
               <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[#a97d30]" name="star" /><h2 className="pixel-title text-xl">置顶事线</h2></div>
