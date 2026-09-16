@@ -20,18 +20,17 @@ export function EventCard({ event, batchFormId }: { event: EventSummary; batchFo
   const status = statusVisual[event.status];
   const tags = event.event_tags.flatMap(({ tag }) => (tag ? [tag.name] : [])).slice(0, 3);
   return (
-    <article className="event-card pixel-card pixel-card-hover p-4 sm:p-5">
-      <span aria-hidden className="event-card-tab">{event.is_pinned ? "置顶" : EVENT_STATUS_LABELS[event.status]}</span>
+    <article className="pixel-card pixel-card-hover p-4 sm:p-5">
       <div className="flex items-start gap-3">
         {batchFormId && <label className="mt-1 inline-flex size-6 shrink-0 cursor-pointer items-center justify-center border-2 border-[var(--line)] bg-[var(--paper-deep)]"><input aria-label={`选择 ${event.title}`} className="size-4 accent-[var(--forest)]" form={batchFormId} name="eventIds" type="checkbox" value={event.id} /></label>}
         <Link className="block min-w-0 flex-1 outline-none" href={`/events/${event.id}`}>
         <div className="flex items-start gap-3">
-          <span className="event-card-seal grid size-12 shrink-0 place-items-center text-xl text-[var(--forest)]">
+          <span className="grid size-12 shrink-0 place-items-center rounded-md border-2 border-[var(--soil)] bg-[var(--paper-deep)] text-xl text-[var(--forest)] shadow-[2px_2px_0_var(--line)]">
             {event.icon || <PixelIcon className="size-6" name={status.icon} />}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              <h2 className="event-card-title pixel-title truncate text-lg sm:text-xl">{event.title}</h2>
+              <h2 className="pixel-title truncate text-lg sm:text-xl">{event.title}</h2>
               <span className={`pixel-chip shrink-0 ${status.className}`}><PixelIcon className="size-3" name={status.icon} />{EVENT_STATUS_LABELS[event.status]}</span>
             </div>
             {event.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--soil)]">{event.description}</p>}
@@ -39,7 +38,7 @@ export function EventCard({ event, batchFormId }: { event: EventSummary; batchFo
         </div>
         </Link>
       </div>
-      <div className="event-card-meta mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 text-xs font-medium text-[var(--soil)]">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t-2 border-dashed border-[var(--line)] pt-3 text-xs font-medium text-[var(--soil)]">
         <span className="inline-flex items-center gap-1"><PixelIcon className="size-3.5 text-[var(--sage)]" name="calendar" />始于 {dateLabel(event.start_date)}</span>
         <span className="inline-flex items-center gap-1"><PixelIcon className="size-3.5 text-[var(--sage)]" name="journal" />{nodeCount} 个节点</span>
         {event.collection && <span className="pixel-chip" style={{ backgroundColor: `${event.collection.color}26`, color: event.collection.color }}><span className="size-2 rounded-sm border border-current" />{event.collection.name}</span>}

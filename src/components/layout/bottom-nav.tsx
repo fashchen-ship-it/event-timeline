@@ -13,7 +13,7 @@ const items: { href: string; label: string; icon: PixelIconName }[] = [
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="主导航" className="pixel-bottom-nav fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(0.55rem,env(safe-area-inset-bottom))] pt-2 sm:hidden">
+    <nav aria-label="主导航" className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-[var(--soil)] bg-[#fff4dd]/95 px-4 pb-[max(0.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-2px_0_rgba(100,70,50,0.12)] backdrop-blur sm:hidden">
       <div className="mx-auto flex max-w-md items-center justify-around">
         {items.map((item) => {
           const active = pathname === item.href || (item.href === "/events" && pathname.startsWith("/events"));
