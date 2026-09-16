@@ -98,11 +98,12 @@ button, input, textarea, select { font: inherit; }
 .pixel-companion-cat, .pixel-companion-dog { position: absolute; width: auto; height: auto; max-width: none; object-fit: contain; image-rendering: pixelated; }
 .pixel-companion-cat { right: 3.7rem; bottom: 0.15rem; width: 6.9rem; }
 .pixel-companion-dog { right: -0.55rem; bottom: 0.2rem; width: 6.3rem; }
-.pixel-header-companions { display: none; min-height: 8.1rem; overflow: hidden; border: 1px dashed var(--line); border-radius: 6px; background: linear-gradient(135deg, #edf1df, #fff9ed); }
-.pixel-header-companions-art { position: relative; width: 100%; height: 100%; min-height: 8.1rem; }
-.pixel-header-companions-art::after { position: absolute; right: 0.6rem; bottom: 0.75rem; left: 0.5rem; height: 2px; content: ""; background: repeating-linear-gradient(90deg, var(--sage) 0 7px, transparent 7px 11px); opacity: 0.7; }
-.pixel-header-companions .pixel-companion-cat { right: 2.75rem; bottom: 0.2rem; width: 6.1rem; }
-.pixel-header-companions .pixel-companion-dog { right: -1rem; bottom: 0.3rem; width: 5.7rem; }
+.pixel-events-header { background: linear-gradient(125deg, #fff9ed 0%, #fff9ed 48%, #f2f3df 78%, #e5eedb 100%); }
+.pixel-header-companions { width: 7.1rem; min-width: 7.1rem; height: 4.7rem; overflow: hidden; }
+.pixel-header-companions-art { position: relative; width: 100%; height: 100%; }
+.pixel-header-companions-art::after { position: absolute; right: 0.15rem; bottom: 0.2rem; left: 0.05rem; height: 2px; content: ""; background: repeating-linear-gradient(90deg, var(--sage) 0 6px, transparent 6px 10px); opacity: 0.6; }
+.pixel-header-companions .pixel-companion-cat { right: 2.55rem; bottom: -0.05rem; width: 4.7rem; }
+.pixel-header-companions .pixel-companion-dog { right: -0.9rem; bottom: 0; width: 4.35rem; }
 .pixel-status-sticker { border-width: 1px 2px 2px 1px; box-shadow: 1px 1px 0 rgba(100, 70, 50, 0.28); }
 .pixel-collection-sticker { border-style: dashed; }
 .pixel-tag-sticker { background: #fff4dc; color: #76533c; }
@@ -134,5 +135,5 @@ a.pixel-calendar-day:hover { background: var(--wheat-light); }
 
 @media (max-width: 420px) { .pixel-companion-shelf { grid-template-columns: minmax(0, 1fr) 8.5rem; min-height: 10.4rem; } .pixel-companion-copy { padding: 1rem 0 0.9rem 1rem; } .pixel-companion-title { font-size: 0.82rem; } .pixel-companion-labels { gap: 0.35rem; margin-top: 0.6rem; } .pixel-label-sticker, .pixel-category-sticker { padding-inline: 0.38rem; font-size: 0.66rem; } .pixel-companion-cat { right: 2.4rem; width: 5.1rem; } .pixel-companion-dog { right: -0.55rem; width: 4.8rem; } }
 
-@media (min-width: 640px) { .pixel-page { padding: 2.5rem 2rem 3rem; } .pixel-header-companions { display: block; } }
+@media (min-width: 640px) { .pixel-page { padding: 2.5rem 2rem 3rem; } .pixel-header-companions { width: 9rem; min-width: 9rem; height: 5.8rem; } .pixel-header-companions .pixel-companion-cat { right: 3.25rem; width: 5.9rem; } .pixel-header-companions .pixel-companion-dog { right: -1rem; width: 5.45rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }

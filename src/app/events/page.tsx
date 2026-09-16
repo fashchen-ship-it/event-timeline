@@ -42,34 +42,31 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
 
   return (
     <PageShell>
-      <header className="pixel-paper p-5 sm:p-6">
+      <header className="pixel-paper pixel-events-header p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="pixel-eyebrow">EVENT LOGBOOK</p>
             <h1 className="pixel-title mt-2 text-3xl sm:text-4xl">我的事线</h1>
-            <p className="mt-2 text-sm leading-6 text-[var(--soil)]">把正在发生的事，慢慢记下来。</p>
+            <div className="mt-2 flex items-end justify-between gap-3"><p className="max-w-[12rem] text-sm leading-6 text-[var(--soil)]">把正在发生的事，慢慢记下来。</p><PixelHeaderCompanions /></div>
           </div>
           <div className="flex shrink-0 gap-2"><Link className="pixel-button pixel-button-primary min-h-10 px-3 text-sm" href="/quick"><PixelIcon className="size-4" name="plus" /><span className="hidden sm:inline">快记</span></Link><form action={signOut}><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">退出</button></form></div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem] sm:items-end">
-          <div>
-            <form action="/search" className="flex gap-2">
-              <label className="sr-only" htmlFor="timeline-search">搜索事件和节点</label>
-              <input className="pixel-input min-w-0 flex-1 text-base" id="timeline-search" name="q" placeholder="搜索事件、节点或标签" type="search" />
-              <button aria-label="搜索" className="pixel-button pixel-button-primary min-h-12 px-3" type="submit"><PixelIcon className="size-5" name="search" /><span className="hidden sm:inline">搜索</span></button>
-            </form>
-            <Link className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--forest)] underline underline-offset-4" href="/journal"><PixelIcon className="size-4" name="journal" />查看全部记录</Link>
-            <form action="/events" className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-              {collections.length > 0 && <label className="sr-only" htmlFor="collection-filter">分类</label>}
-              {collections.length > 0 ? <select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedCollection} id="collection-filter" name="collection"><option value="all">全部分类</option><option value="none">未分类</option>{collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}</select> : <input name="collection" type="hidden" value="all" />}
-              <label className="sr-only" htmlFor="event-status">事件状态</label>
-              <select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedStatus} id="event-status" name="status"><option value="all">全部状态</option>{EVENT_STATUSES.filter((status) => status !== "archived").map((status) => <option key={status} value={status}>{EVENT_STATUS_LABELS[status]}</option>)}</select>
-              <label className="sr-only" htmlFor="event-sort">排序方式</label>
-              <select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedSort} id="event-sort" name="sort"><option value="updated">按最近更新</option><option value="start-desc">开始日期：新到旧</option><option value="start-asc">开始日期：旧到新</option><option value="title">按事件名称</option></select>
-              <button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">整理</button>
-            </form>
-          </div>
-          <PixelHeaderCompanions />
+        <div className="mt-5">
+          <form action="/search" className="flex gap-2">
+            <label className="sr-only" htmlFor="timeline-search">搜索事件和节点</label>
+            <input className="pixel-input min-w-0 flex-1 text-base" id="timeline-search" name="q" placeholder="搜索事件、节点或标签" type="search" />
+            <button aria-label="搜索" className="pixel-button pixel-button-primary min-h-12 px-3" type="submit"><PixelIcon className="size-5" name="search" /><span className="hidden sm:inline">搜索</span></button>
+          </form>
+          <Link className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--forest)] underline underline-offset-4" href="/journal"><PixelIcon className="size-4" name="journal" />查看全部记录</Link>
+          <form action="/events" className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+            {collections.length > 0 && <label className="sr-only" htmlFor="collection-filter">分类</label>}
+            {collections.length > 0 ? <select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedCollection} id="collection-filter" name="collection"><option value="all">全部分类</option><option value="none">未分类</option>{collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}</select> : <input name="collection" type="hidden" value="all" />}
+            <label className="sr-only" htmlFor="event-status">事件状态</label>
+            <select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedStatus} id="event-status" name="status"><option value="all">全部状态</option>{EVENT_STATUSES.filter((status) => status !== "archived").map((status) => <option key={status} value={status}>{EVENT_STATUS_LABELS[status]}</option>)}</select>
+            <label className="sr-only" htmlFor="event-sort">排序方式</label>
+            <select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedSort} id="event-sort" name="sort"><option value="updated">按最近更新</option><option value="start-desc">开始日期：新到旧</option><option value="start-asc">开始日期：旧到新</option><option value="title">按事件名称</option></select>
+            <button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">整理</button>
+          </form>
         </div>
       </header>
 
