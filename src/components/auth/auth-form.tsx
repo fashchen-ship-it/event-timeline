@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { signIn, signUp } from "@/lib/auth/actions";
 import type { AuthActionState } from "@/lib/auth/schema";
 
@@ -60,6 +61,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       >
         {isPending ? "请稍候…" : isLogin ? "登录" : "注册"}
       </button>
+      {isLogin && <p className="text-right text-sm"><Link className="font-bold text-[var(--forest)] underline underline-offset-4" href="/forgot-password">忘记密码？</Link></p>}
     </form>
   );
 }
