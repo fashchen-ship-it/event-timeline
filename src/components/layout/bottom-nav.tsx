@@ -6,7 +6,8 @@ import { PixelIcon, type PixelIconName } from "@/components/ui/pixel";
 
 const items: { href: string; label: string; icon: PixelIconName }[] = [
   { href: "/events", label: "事件", icon: "journal" },
-  { href: "/archive", label: "归档", icon: "archive" },
+  { href: "/projects", label: "项目", icon: "briefcase" },
+  { href: "/calendar", label: "月历", icon: "calendar" },
   { href: "/me", label: "我的", icon: "home" },
 ];
 
