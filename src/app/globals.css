@@ -92,13 +92,13 @@ button, input, textarea, select { font: inherit; }
 .pixel-companion-art { position: relative; min-width: 0; overflow: hidden; }
 .pixel-companion-art::before { position: absolute; right: 0.8rem; bottom: 1.1rem; left: 0.1rem; height: 2px; content: ""; background: repeating-linear-gradient(90deg, var(--sage) 0 7px, transparent 7px 11px); opacity: 0.7; }
 .pixel-companion-cat, .pixel-companion-dog { position: absolute; width: auto; height: auto; max-width: none; object-fit: contain; image-rendering: pixelated; }
-.pixel-companion-cat { right: 3.55rem; bottom: 0.15rem; width: 8.4rem; }
-.pixel-companion-dog { right: -0.7rem; bottom: 0.2rem; width: 6.1rem; }
+.pixel-companion-cat { right: 4.3rem; bottom: 0.15rem; width: 5rem; }
+.pixel-companion-dog { right: -0.85rem; bottom: 0.2rem; width: 6.7rem; }
 .pixel-status-sticker { border-width: 1px 2px 2px 1px; box-shadow: 1px 1px 0 rgba(100, 70, 50, 0.28); }
 .pixel-collection-sticker { border-style: dashed; }
 .pixel-tag-sticker { background: #fff4dc; color: #76533c; }
 
-@media (max-width: 420px) { .pixel-companion-shelf { grid-template-columns: minmax(0, 1fr) 8.5rem; min-height: 10.4rem; } .pixel-companion-copy { padding: 1rem 0 0.9rem 1rem; } .pixel-companion-title { font-size: 0.82rem; } .pixel-companion-labels { gap: 0.35rem; margin-top: 0.6rem; } .pixel-label-sticker { padding-inline: 0.38rem; font-size: 0.66rem; } .pixel-companion-cat { right: 2.6rem; width: 6.4rem; } .pixel-companion-dog { right: -0.8rem; width: 4.8rem; } }
+@media (max-width: 420px) { .pixel-companion-shelf { grid-template-columns: minmax(0, 1fr) 8.5rem; min-height: 10.4rem; } .pixel-companion-copy { padding: 1rem 0 0.9rem 1rem; } .pixel-companion-title { font-size: 0.82rem; } .pixel-companion-labels { gap: 0.35rem; margin-top: 0.6rem; } .pixel-label-sticker { padding-inline: 0.38rem; font-size: 0.66rem; } .pixel-companion-cat { right: 3.1rem; width: 3.8rem; } .pixel-companion-dog { right: -0.8rem; width: 5.1rem; } }
 
 @media (min-width: 640px) { .pixel-page { padding: 2.5rem 2rem 3rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
