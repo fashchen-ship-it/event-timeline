@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { PageShell, PixelEmptyState, PixelIcon, type PixelIconName } from "@/components/ui/pixel";
 import { getEventCollections, getEventsForProjects } from "@/lib/events/queries";
+import { EVENT_STATUS_LABELS, EVENT_STATUSES, type EventStatus } from "@/lib/events/types";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -28,16 +29,24 @@ function relativeUpdate(value: string) {
   return `${Math.floor(hours / 24)} 天前更新`;
 }
 
-export default async function ProjectsPage() {
+type ProjectSort = "updated" | "count" | "title";
+
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string; sort?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [collections, events] = await Promise.all([getEventCollections(), getEventsForProjects()]);
+  const [collections, events, filters] = await Promise.all([getEventCollections(), getEventsForProjects(), searchParams]);
+  const selectedStatus: EventStatus | "all" = EVENT_STATUSES.includes(filters.status as EventStatus) && filters.status !== "archived" ? filters.status as EventStatus : "all";
+  const selectedSort: ProjectSort = filters.sort === "count" || filters.sort === "title" ? filters.sort : "updated";
   const groups = collections.map((collection) => {
     const groupEvents = events.filter((event) => event.collection_id === collection.id).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     return { collection, events: groupEvents, activeCount: groupEvents.filter((event) => event.status === "active").length, latest: groupEvents[0] ?? null };
-  }).filter((group) => group.events.length > 0).sort((a, b) => (b.latest?.updated_at ?? "").localeCompare(a.latest?.updated_at ?? ""));
+  }).filter((group) => group.events.length > 0 && (selectedStatus === "all" || group.events.some((event) => event.status === selectedStatus))).sort((a, b) => {
+    if (selectedSort === "count") return b.events.length - a.events.length || (b.latest?.updated_at ?? "").localeCompare(a.latest?.updated_at ?? "");
+    if (selectedSort === "title") return a.collection.name.localeCompare(b.collection.name, "zh-Hans-CN");
+    return (b.latest?.updated_at ?? "").localeCompare(a.latest?.updated_at ?? "");
+  });
   const ungrouped = events.filter((event) => !event.collection_id).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   return (
@@ -51,6 +60,7 @@ export default async function ProjectsPage() {
       </header>
 
       <p className="mt-4 text-xs leading-6 text-[var(--soil)]">删除项目分类不会删除里面的事线；它们会保留并移动到“尚未分组”。</p>
+      <form action="/projects" className="pixel-paper mt-4 grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"><label className="sr-only" htmlFor="project-status">项目状态筛选</label><select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedStatus} id="project-status" name="status"><option value="all">包含任意状态</option>{EVENT_STATUSES.filter((status) => status !== "archived").map((status) => <option key={status} value={status}>包含{EVENT_STATUS_LABELS[status]}</option>)}</select><label className="sr-only" htmlFor="project-sort">项目排序</label><select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedSort} id="project-sort" name="sort"><option value="updated">按最近更新</option><option value="count">按事线数量</option><option value="title">按项目名称</option></select><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">整理</button></form>
       {groups.length ? <>
         <section className="mt-7" aria-labelledby="project-groups-heading">
           <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--wheat)]" name="briefcase" /><h2 className="pixel-title text-xl" id="project-groups-heading">我的项目</h2></div><span className="pixel-chip">{groups.length} 组</span></div>

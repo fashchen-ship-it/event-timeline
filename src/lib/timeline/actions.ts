@@ -78,6 +78,11 @@ async function userOwnsEvent(supabase: Awaited<ReturnType<typeof createClient>>,
   return Boolean(data);
 }
 
+async function touchEvent(supabase: Awaited<ReturnType<typeof createClient>>, eventId: string) {
+  const { error } = await supabase.from("events").update({ updated_at: new Date().toISOString() }).eq("id", eventId);
+  if (error) throw new Error("更新事线时间失败，请稍后重试。");
+}
+
 async function clearStorageFiles(
   supabase: Awaited<ReturnType<typeof createClient>>,
   paths: string[],
@@ -231,12 +236,14 @@ export async function createNode(
     await replaceNodeChecklist(supabase, node.id, parsed.data.eventId, user.id, parsed.data.checklistItems);
     await replaceNodeReference(supabase, node.id, parsed.data.eventId, user.id, parsed.data.referenceTargetEventId, parsed.data.referenceTargetNodeId, parsed.data.referenceNote);
     await addAttachments(supabase, node.id, user.id, parsed.data.uploads);
+    await touchEvent(supabase, parsed.data.eventId);
   } catch {
     return { error: "节点已创建，但标签或附件保存失败。请打开编辑页后重试。" };
   }
 
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath("/events");
+  revalidatePath("/projects");
   redirect(`/events/${parsed.data.eventId}`);
 }
 
@@ -278,12 +285,14 @@ export async function updateNode(
     await replaceNodeChecklist(supabase, parsed.data.id, parsed.data.eventId, user.id, parsed.data.checklistItems);
     await replaceNodeReference(supabase, parsed.data.id, parsed.data.eventId, user.id, parsed.data.referenceTargetEventId, parsed.data.referenceTargetNodeId, parsed.data.referenceNote);
     await addAttachments(supabase, parsed.data.id, user.id, parsed.data.uploads);
+    await touchEvent(supabase, parsed.data.eventId);
   } catch {
     return { error: "节点已保存，但标签或附件保存失败。请重试。" };
   }
 
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath("/events");
+  revalidatePath("/projects");
   redirect(`/events/${parsed.data.eventId}`);
 }
 
@@ -307,8 +316,11 @@ export async function deleteNode(formData: FormData) {
     .eq("event_id", parsed.data.eventId);
   if (error) throw new Error("删除节点失败，请稍后重试。");
 
+  await touchEvent(supabase, parsed.data.eventId);
+
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath("/events");
+  revalidatePath("/projects");
   redirect(`/events/${parsed.data.eventId}`);
 }
 

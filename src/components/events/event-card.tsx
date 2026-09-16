@@ -15,10 +15,15 @@ function dateLabel(value: string) {
   return `${year}年${Number(month)}月${Number(day)}日`;
 }
 
+function daysSince(value: string) {
+  return Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000));
+}
+
 export function EventCard({ event, batchFormId }: { event: EventSummary; batchFormId?: string }) {
   const nodeCount = event.event_nodes?.[0]?.count ?? 0;
   const status = statusVisual[event.status];
   const tags = event.event_tags.flatMap(({ tag }) => (tag ? [tag.name] : [])).slice(0, 3);
+  const staleDays = event.status === "active" ? daysSince(event.updated_at) : 0;
   return (
     <article className="pixel-card pixel-card-hover p-4 sm:p-5">
       <div className="flex items-start gap-3">
@@ -41,6 +46,7 @@ export function EventCard({ event, batchFormId }: { event: EventSummary; batchFo
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t-2 border-dashed border-[var(--line)] pt-3 text-xs font-medium text-[var(--soil)]">
         <span className="inline-flex items-center gap-1"><PixelIcon className="size-3.5 text-[var(--sage)]" name="calendar" />始于 {dateLabel(event.start_date)}</span>
         <span className="inline-flex items-center gap-1"><PixelIcon className="size-3.5 text-[var(--sage)]" name="journal" />{nodeCount} 个节点</span>
+        {staleDays >= 14 && <span className="pixel-chip bg-[#f9e7bd] text-[#805d24]"><PixelIcon className="size-3" name="hourglass" />{staleDays} 天未记录</span>}
         {event.collection && <span className="pixel-chip pixel-collection-sticker" style={{ backgroundColor: `${event.collection.color}26`, color: event.collection.color }}><span className="size-2 rounded-sm border border-current" />{event.collection.name}</span>}
       </div>
       {tags.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{tags.map((tag) => <span className="pixel-chip pixel-tag-sticker" key={tag}>#{tag}</span>)}</div>}
