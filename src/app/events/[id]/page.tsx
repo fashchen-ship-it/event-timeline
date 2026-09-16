@@ -12,7 +12,7 @@ import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
 
 export const dynamic = "force-dynamic";
 
-export default async function EventDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ order?: string; important?: string; view?: string }> }) {
+export default async function EventDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ order?: string; important?: string; view?: string; expand?: string }> }) {
   const { id } = await params;
   if (!id) notFound();
   const filters = await searchParams;
@@ -51,7 +51,7 @@ export default async function EventDetailPage({ params, searchParams }: { params
         <EventActivitySummary startDate={event.start_date} stats={stats} />
       </header>
 
-      <EventRelations eventId={event.id} incoming={relations.incoming} outgoing={relations.outgoing} targets={targets} />
+      <EventRelations eventId={event.id} expandedProjectId={filters.expand} incoming={relations.incoming} outgoing={relations.outgoing} targets={targets} />
 
       <section className="mt-9">
         {nodes.length > 0 && <NodeFinder />}

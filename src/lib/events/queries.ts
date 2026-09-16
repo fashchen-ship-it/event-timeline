@@ -112,7 +112,7 @@ export async function getEventRelations(eventId: string) {
   const mapReference = (reference: (typeof references)[number], relatedId: string): EventReference | null => {
     const event = details.get(relatedId);
     const nodes = [...(event?.event_nodes ?? [])].sort((a, b) => b.event_date.localeCompare(a.event_date) || (b.event_time ?? "").localeCompare(a.event_time ?? ""));
-    return event ? { id: reference.id, event_id: relatedId, event_title: event.title, note: reference.note, event_status: event.status, event_start_date: event.start_date, event_icon: event.icon, event_updated_at: event.updated_at, node_count: nodes.length, recent_nodes: nodes.slice(0, 3) } : null;
+    return event ? { id: reference.id, event_id: relatedId, event_title: event.title, note: reference.note, event_status: event.status, event_start_date: event.start_date, event_icon: event.icon, event_updated_at: event.updated_at, node_count: nodes.length, recent_nodes: nodes.slice(0, 3), timeline_nodes: nodes } : null;
   };
 
   return {

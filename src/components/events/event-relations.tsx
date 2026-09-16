@@ -9,6 +9,7 @@ import { PixelIcon } from "@/components/ui/pixel";
 type ReferenceTarget = { id: string; title: string };
 type EventRelationsProps = {
   eventId: string;
+  expandedProjectId?: string;
   targets: ReferenceTarget[];
   outgoing: EventReference[];
   incoming: EventReference[];
@@ -48,16 +49,16 @@ function RelationList({ eventId, relations, direction }: { eventId: string; rela
   );
 }
 
-function RelatedProjectCards({ eventId, relations }: { eventId: string; relations: EventReference[] }) {
+function RelatedProjectCards({ eventId, expandedProjectId, relations }: { eventId: string; expandedProjectId?: string; relations: EventReference[] }) {
   if (!relations.length) return null;
-  return <div className="mt-3 grid gap-3 sm:grid-cols-2">{relations.map((relation) => <article className="pixel-card p-4" key={relation.id}>
+  return <div className="mt-3 grid gap-3 sm:grid-cols-2">{relations.map((relation) => { const expanded = expandedProjectId === relation.event_id; const visibleNodes = expanded ? relation.timeline_nodes : relation.recent_nodes; return <article className="pixel-card p-4" id={`linked-project-${relation.event_id}`} key={relation.id}>
     <Link className="block" href={`/events/${relation.event_id}`}><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center border-2 border-[var(--line)] bg-[var(--paper-deep)] text-lg text-[var(--forest)]">{relation.event_icon || <PixelIcon className="size-5" name="briefcase" />}</span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><h4 className="pixel-title truncate text-base">{relation.event_title}</h4><PixelIcon className="mt-0.5 size-4 shrink-0 text-[var(--soil)]" name="link" /></div><p className="mt-1 text-xs font-bold text-[var(--forest)]">{EVENT_STATUS_LABELS[relation.event_status]} · {relativeUpdate(relation.event_updated_at)}</p></div></div><div className="mt-3 flex flex-wrap gap-2 border-t-2 border-dashed border-[var(--line)] pt-3 text-xs font-bold text-[var(--soil)]"><span>开始于 {relation.event_start_date}</span><span>{relation.node_count} 个节点</span></div>{relation.note && <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--soil)]">{relation.note}</p>}</Link>
-    {relation.recent_nodes.length > 0 && <details className="mt-3 border-t border-dashed border-[var(--line)] pt-3"><summary className="cursor-pointer text-sm font-bold text-[var(--forest)]">展开最近节点（{relation.recent_nodes.length}）</summary><ol className="mt-3 space-y-2">{relation.recent_nodes.map((node) => <li key={node.id}><Link className="block rounded border border-[var(--line)] bg-[var(--paper-deep)] px-3 py-2 hover:bg-[var(--wheat-light)]" href={`/events/${relation.event_id}#node-${node.id}`}><p className="text-xs font-bold text-[var(--sage)]">{nodeDateLabel(node.event_date, node.event_time)}{node.is_important && " · 重要"}</p><p className="mt-1 truncate text-sm font-bold text-[var(--ink)]">{node.title}</p></Link></li>)}</ol></details>}
+    {visibleNodes.length > 0 && <details className="mt-3 border-t border-dashed border-[var(--line)] pt-3" open={expanded}><summary className="cursor-pointer text-sm font-bold text-[var(--forest)]">{expanded ? `完整时间线（${relation.node_count}）` : `展开最近节点（${relation.recent_nodes.length}）`}</summary><ol className="mt-3 space-y-2">{visibleNodes.map((node) => <li key={node.id}><Link className="block rounded border border-[var(--line)] bg-[var(--paper-deep)] px-3 py-2 hover:bg-[var(--wheat-light)]" href={`/events/${relation.event_id}#node-${node.id}`}><p className="text-xs font-bold text-[var(--sage)]">{nodeDateLabel(node.event_date, node.event_time)}{node.is_important && " · 重要"}</p><p className="mt-1 truncate text-sm font-bold text-[var(--ink)]">{node.title}</p></Link></li>)}</ol>{!expanded && relation.node_count > relation.recent_nodes.length && <Link className="mt-3 inline-flex text-xs font-bold text-[var(--forest)] underline underline-offset-4" href={`/events/${eventId}?expand=${relation.event_id}#linked-project-${relation.event_id}`}>在这里展开全部 {relation.node_count} 条节点</Link>}</details>}
     <form action={deleteEventReference} className="mt-3"><input name="sourceEventId" type="hidden" value={relation.event_id} /><input name="referenceId" type="hidden" value={relation.id} /><input name="returnEventId" type="hidden" value={eventId} /><button aria-label={`移除项目 ${relation.event_title}`} className="text-xs font-bold text-[var(--brick)] underline underline-offset-2" type="submit">移除关联</button></form>
-  </article>)}</div>;
+  </article>; })}</div>;
 }
 
-export function EventRelations({ eventId, targets, outgoing, incoming }: EventRelationsProps) {
+export function EventRelations({ eventId, expandedProjectId, targets, outgoing, incoming }: EventRelationsProps) {
   const [state, formAction, isPending] = useActionState(createEventReference, initialState);
   return (
     <section className="pixel-paper mt-8 p-5 sm:p-6">
@@ -78,7 +79,7 @@ export function EventRelations({ eventId, targets, outgoing, incoming }: EventRe
       {(state.error || state.success) && <p className={`mt-3 text-sm ${state.error ? "text-[var(--brick)]" : "text-[var(--forest)]"}`}>{state.error ?? state.success}</p>}
 
       {outgoing.length > 0 && <div className="mt-6"><h3 className="text-sm font-bold text-[var(--ink)]">这件事关联到</h3><RelationList direction="outgoing" eventId={eventId} relations={outgoing} /></div>}
-      {incoming.length > 0 && <div className="mt-6"><div className="flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-[var(--ink)]">关联项目</h3><span className="pixel-chip">{incoming.length} 项</span></div><p className="mt-2 text-sm leading-6 text-[var(--soil)]">这些事线把当前事线作为共同的总线；点开卡片即可查看各自完整记录。</p><div className="mt-3 grid grid-cols-3 gap-2"><span className="pixel-chip justify-center">{incoming.filter((relation) => relation.event_status === "active").length} 进行中</span><span className="pixel-chip justify-center">{incoming.filter((relation) => relation.event_status === "paused").length} 已暂停</span><span className="pixel-chip justify-center">{incoming.reduce((total, relation) => total + relation.node_count, 0)} 个节点</span></div><RelatedProjectCards eventId={eventId} relations={incoming} /></div>}
+      {incoming.length > 0 && <div className="mt-6"><div className="flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-[var(--ink)]">关联项目</h3><span className="pixel-chip">{incoming.length} 项</span></div><p className="mt-2 text-sm leading-6 text-[var(--soil)]">这些事线把当前事线作为共同的总线；点开卡片可查看完整项目，或在此展开它的全部时间线。</p><div className="mt-3 grid grid-cols-3 gap-2"><span className="pixel-chip justify-center">{incoming.filter((relation) => relation.event_status === "active").length} 进行中</span><span className="pixel-chip justify-center">{incoming.filter((relation) => relation.event_status === "paused").length} 已暂停</span><span className="pixel-chip justify-center">{incoming.reduce((total, relation) => total + relation.node_count, 0)} 个节点</span></div><RelatedProjectCards eventId={eventId} expandedProjectId={expandedProjectId} relations={incoming} /></div>}
     </section>
   );
 }
