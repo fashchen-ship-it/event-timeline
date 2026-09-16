@@ -8,6 +8,22 @@ function dateLabel(date: string, time: string | null) {
   return `${year}年${Number(month)}月${Number(day)}日${time ? ` ${time.slice(0, 5)}` : ""}`;
 }
 
+export function nodeGapLabel(first: TimelineNode, second: TimelineNode) {
+  const hasExactTime = Boolean(first.event_time && second.event_time);
+  if (first.event_date === second.event_date && !hasExactTime) return null;
+  const firstMoment = new Date(`${first.event_date}T${first.event_time ?? "00:00:00"}`).getTime();
+  const secondMoment = new Date(`${second.event_date}T${second.event_time ?? "00:00:00"}`).getTime();
+  const minutes = Math.round(Math.abs(firstMoment - secondMoment) / 60_000);
+  if (!Number.isFinite(minutes) || minutes === 0) return null;
+  const days = Math.floor(minutes / 1_440);
+  if (!hasExactTime) return days > 0 ? `相隔 ${days} 天` : null;
+  const hours = Math.floor((minutes % 1_440) / 60);
+  const remainder = minutes % 60;
+  if (days > 0) return `相隔 ${days} 天${hours ? ` ${hours} 小时` : ""}`;
+  if (hours > 0) return `相隔 ${hours} 小时${remainder ? ` ${remainder} 分钟` : ""}`;
+  return `相隔 ${remainder} 分钟`;
+}
+
 export function TimelineNodeCard({ eventId, node }: { eventId: string; node: TimelineNode }) {
   const tags = node.node_tags.flatMap(({ tag }) => (tag ? [tag.name] : []));
   const images = node.attachments.filter((attachment) => attachment.file_type.startsWith("image/") && attachment.signed_url);

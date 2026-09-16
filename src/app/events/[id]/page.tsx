@@ -5,7 +5,7 @@ import { getEventActivityStats, getEventDetail, getEventReferenceTargets, getEve
 import { EventRelations } from "@/components/events/event-relations";
 import { EventActivitySummary } from "@/components/events/event-activity-summary";
 import { EventStatusSwitcher } from "@/components/events/event-status-switcher";
-import { TimelineNodeCard } from "@/components/timeline/timeline-node";
+import { nodeGapLabel, TimelineNodeCard } from "@/components/timeline/timeline-node";
 import { CompactNodeList } from "@/components/timeline/compact-node-list";
 import { NodeFinder } from "@/components/timeline/node-finder";
 import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
@@ -60,7 +60,13 @@ export default async function EventDetailPage({ params, searchParams }: { params
           <div className="flex flex-wrap gap-2"><div className="flex border-2 border-[var(--line)] bg-[var(--paper-deep)] p-1 text-sm font-bold"><Link className={`rounded px-3 py-2 ${newestFirst ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: "desc", important: importantOnly ? "1" : undefined, view: listView ? "list" : "timeline" })}>最新在前</Link><Link className={`rounded px-3 py-2 ${!newestFirst ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: "asc", important: importantOnly ? "1" : undefined, view: listView ? "list" : "timeline" })}>最早在前</Link></div><div className="flex border-2 border-[var(--line)] bg-[var(--paper-deep)] p-1 text-sm font-bold"><Link className={`rounded px-3 py-2 ${!listView ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: newestFirst ? "desc" : "asc", important: importantOnly ? "1" : undefined, view: "timeline" })}>小径</Link><Link className={`rounded px-3 py-2 ${listView ? "bg-[var(--card)] text-[var(--forest)] shadow-[1px_1px_0_var(--line)]" : "text-[var(--soil)]"}`} href={filterUrl({ order: newestFirst ? "desc" : "asc", important: importantOnly ? "1" : undefined, view: "list" })}>列表</Link></div></div>
         </div>
         <div className="mt-4"><Link className={`pixel-button min-h-10 px-3 text-sm ${importantOnly ? "border-[var(--brick)] bg-[#f9dfad] text-[#7d5321] shadow-[2px_2px_0_#b86950]" : "pixel-button-secondary"}`} href={filterUrl({ order: newestFirst ? "desc" : "asc", important: importantOnly ? undefined : "1", view: listView ? "list" : "timeline" })}>{importantOnly ? "查看全部节点" : "只看重要节点"}</Link></div>
-        {nodes.length ? listView ? <CompactNodeList eventId={event.id} nodes={nodes} /> : <ol className="pixel-timeline mt-7 space-y-5">{nodes.map((node) => <TimelineNodeCard eventId={event.id} key={node.id} node={node} />)}</ol> : <div className="mt-7"><PixelEmptyState icon="star" title="这件事还没有留下节点。">从第一个重要时刻开始记录吧。</PixelEmptyState></div>}
+        {nodes.length ? listView ? <CompactNodeList eventId={event.id} nodes={nodes} /> : <ol className="pixel-timeline mt-7 space-y-5">{nodes.flatMap((node, index) => {
+          const gap = index > 0 ? nodeGapLabel(nodes[index - 1], node) : null;
+          return [
+            ...(gap ? [<li className="ml-9 sm:ml-11" key={`gap-${node.id}`}><span className="pixel-gap-label"><PixelIcon className="size-3" name="hourglass" />{gap}</span></li>] : []),
+            <TimelineNodeCard eventId={event.id} key={node.id} node={node} />,
+          ];
+        })}</ol> : <div className="mt-7"><PixelEmptyState icon="star" title="这件事还没有留下节点。">从第一个重要时刻开始记录吧。</PixelEmptyState></div>}
       </section>
       <Link aria-label="添加节点" className="pixel-button pixel-button-primary fixed bottom-6 right-5 z-30 size-14 min-h-14 rounded-md p-0 shadow-[3px_3px_0_#25442e] sm:bottom-8 sm:right-8" href={`/events/${event.id}/nodes/new`}><PixelIcon className="size-6" name="plus" /></Link>
     </PageShell>

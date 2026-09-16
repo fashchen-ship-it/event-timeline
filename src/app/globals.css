@@ -80,6 +80,7 @@ button, input, textarea, select { font: inherit; }
 .pixel-timeline::before { position: absolute; top: 0.8rem; bottom: 0.8rem; left: 0.55rem; width: 5px; content: ""; background: repeating-linear-gradient(to bottom, var(--sage) 0 8px, var(--forest) 8px 12px); box-shadow: 2px 0 0 var(--paper-deep); }
 .pixel-node-marker { position: absolute; top: 1.35rem; left: 0; display: grid; width: 1.3rem; height: 1.3rem; place-items: center; border: 2px solid var(--card); border-radius: 3px; background: var(--sage); box-shadow: 0 0 0 2px var(--forest); }
 .pixel-node-marker-important { background: var(--wheat); box-shadow: 0 0 0 2px var(--brick); }
+.pixel-gap-label { display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--line); border-radius: 999px; background: var(--paper-deep); padding: 0.25rem 0.55rem; color: var(--soil); font-size: 0.72rem; font-weight: 800; }
 .pixel-photo-frame { overflow: hidden; border: 3px solid var(--soil); border-radius: 4px; background: var(--paper-deep); box-shadow: 3px 3px 0 var(--line); }
 .pixel-empty { border: 2px dashed var(--line); border-radius: 8px; background: rgba(255, 249, 237, 0.75); padding: 2rem 1.25rem; text-align: center; }
 
