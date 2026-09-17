@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 /** Creates a request-scoped server client. Cookie changes belong in a Route Handler or Server Action. */
-export async function createClient() {
+export const createClient = cache(async function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -28,4 +29,4 @@ export async function createClient() {
       },
     },
   });
-}
+});

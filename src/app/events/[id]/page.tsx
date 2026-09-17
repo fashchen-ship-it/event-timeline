@@ -9,6 +9,7 @@ import { nodeGapLabel, TimelineNodeCard } from "@/components/timeline/timeline-n
 import { CompactNodeList } from "@/components/timeline/compact-node-list";
 import { NodeFinder } from "@/components/timeline/node-finder";
 import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
+import { ActionNotice } from "@/components/ui/action-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function EventDetailPage({ params, searchParams }: { params
         <div className="mt-5 flex flex-wrap gap-2"><span className="pixel-chip"><PixelIcon className="size-3" name="calendar" />开始于 {event.start_date}</span>{tags.map((tag) => <span className="pixel-chip" key={tag}>{tag}</span>)}</div>
         <EventActivitySummary startDate={event.start_date} stats={stats} />
       </header>
+      <ActionNotice />
 
       <EventRelations eventId={event.id} expandedProjectId={filters.expand} incoming={relations.incoming} outgoing={relations.outgoing} projectTree={projectTree} targets={targets} />
 

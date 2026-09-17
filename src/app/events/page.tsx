@@ -8,6 +8,7 @@ import { getEventCollections, getEvents } from "@/lib/events/queries";
 import { EVENT_STATUS_LABELS, EVENT_STATUSES, type EventStatus } from "@/lib/events/types";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
+import { ActionNotice } from "@/components/ui/action-notice";
 import { PixelHeaderCompanions } from "@/components/ui/pixel-companions";
 import { OfflineQuickCapture } from "@/components/offline/offline-quick-capture";
 
@@ -24,11 +25,19 @@ function sortEvents<T extends { title: string; start_date: string; updated_at: s
   });
 }
 
-export default async function EventsPage({ searchParams }: { searchParams: Promise<{ collection?: string; sort?: string; status?: string }> }) {
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ collection?: string; sort?: string; status?: string; notice?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [events, collections, filters] = await Promise.all([getEvents(), getEventCollections(), searchParams]);
+  const filters = await searchParams;
+  let events: Awaited<ReturnType<typeof getEvents>> = [];
+  let collections: Awaited<ReturnType<typeof getEventCollections>> = [];
+  let recordsReadFailed = false;
+  try {
+    [events, collections] = await Promise.all([getEvents(), getEventCollections()]);
+  } catch {
+    recordsReadFailed = true;
+  }
   const selectedCollection = filters.collection ?? "all";
   const selectedSort: EventSort = filters.sort === "start-desc" || filters.sort === "start-asc" || filters.sort === "title" ? filters.sort : "updated";
   const selectedStatus: EventStatus | "all" = EVENT_STATUSES.includes(filters.status as EventStatus) && filters.status !== "archived" ? filters.status as EventStatus : "all";
@@ -66,9 +75,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           </form>
         </div>
       </header>
+      <ActionNotice />
       <OfflineQuickCapture events={events.map(({ id, title }) => ({ id, title }))} />
 
-      {!events.length ? (
+      {recordsReadFailed ? <div className="mt-8"><PixelEmptyState icon="hourglass" title="记录暂时没有加载出来。">你的数据没有被删除。多半是网络或服务短暂波动，请重新打开一次；如果刚保存过记录，也可以稍等几秒后再试。<Link className="pixel-button pixel-button-primary mt-5 min-h-11 px-4 text-sm" href="/events"><PixelIcon className="size-4" name="journal" />重新打开事件</Link></PixelEmptyState></div> : !events.length ? (
         <div className="mt-8"><PixelEmptyState icon="sprout" title="还没有正在发生的事。">创建一条事件线，记录它是怎么一步步走到今天的。<Link className="pixel-button pixel-button-primary mt-5 min-h-11 px-4 text-sm" href="/events/new"><PixelIcon className="size-4" name="plus" />新建事件</Link><p className="mt-3 text-xs opacity-70">当前账号：{user.email}</p></PixelEmptyState></div>
       ) : !visibleEvents.length ? <div className="mt-8"><PixelEmptyState icon="journal" title="没有符合筛选的事线。">换一个分类或状态，或者清除筛选后再看看。</PixelEmptyState></div> : (
         <div className="mt-8 space-y-9">

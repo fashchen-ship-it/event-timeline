@@ -244,7 +244,7 @@ export async function createNode(
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath("/events");
   revalidatePath("/projects");
-  redirect(`/events/${parsed.data.eventId}`);
+  redirect(`/events/${parsed.data.eventId}?notice=node-saved`);
 }
 
 export async function updateNode(
@@ -293,7 +293,7 @@ export async function updateNode(
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath("/events");
   revalidatePath("/projects");
-  redirect(`/events/${parsed.data.eventId}`);
+  redirect(`/events/${parsed.data.eventId}?notice=node-saved`);
 }
 
 const deleteNodeSchema = z.object({ eventId: z.string().uuid(), nodeId: z.string().uuid() });
@@ -321,7 +321,7 @@ export async function deleteNode(formData: FormData) {
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath("/events");
   revalidatePath("/projects");
-  redirect(`/events/${parsed.data.eventId}`);
+  redirect(`/events/${parsed.data.eventId}?notice=node-deleted`);
 }
 
 const deleteAttachmentSchema = z.object({ eventId: z.string().uuid(), nodeId: z.string().uuid(), attachmentId: z.string().uuid() });

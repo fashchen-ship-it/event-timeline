@@ -1,4 +1,4 @@
-const CACHE_NAME = "shixian-static-v4";
+const CACHE_NAME = "shixian-static-v5";
 const APP_SHELL = ["/offline.html", "/manifest.webmanifest", "/icon"];
 
 self.addEventListener("install", (event) => {
@@ -22,14 +22,11 @@ self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     event.respondWith((async () => {
       try {
-        const response = await fetch(event.request);
-        if (response.ok && url.origin === self.location.origin) {
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put(event.request, response.clone());
-        }
-        return response;
+        // Never persist user-specific server pages. An older page document can refer to
+        // a newer React payload after deployment and cause a blank/error screen.
+        return await fetch(event.request);
       } catch {
-        return (await caches.match(event.request)) || (await caches.match("/offline.html"));
+        return await caches.match("/offline.html");
       }
     })());
     return;

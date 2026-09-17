@@ -116,7 +116,7 @@ export async function createEvent(_previousState: EventActionState, formData: Fo
     return { error: "事件已创建，但标签保存失败。请打开编辑页后重新保存标签。" };
   }
   revalidatePath("/events");
-  redirect("/events");
+  redirect("/events?notice=event-created");
 }
 
 export async function updateEvent(_previousState: EventActionState, formData: FormData): Promise<EventActionState> {
@@ -151,7 +151,7 @@ export async function updateEvent(_previousState: EventActionState, formData: Fo
   }
   revalidatePath("/events");
   revalidatePath(`/events/${parsed.data.id}`);
-  redirect(`/events/${parsed.data.id}/edit`);
+  redirect(`/events/${parsed.data.id}?notice=event-updated`);
 }
 
 const eventIdSchema = z.string().uuid();
@@ -294,7 +294,7 @@ export async function archiveEvent(formData: FormData) {
   if (error) throw new Error("归档事件失败，请稍后重试。");
   revalidatePath("/events");
   revalidatePath("/archive");
-  redirect("/events");
+  redirect("/events?notice=event-archived");
 }
 
 export async function batchArchiveEvents(formData: FormData) {
@@ -373,5 +373,5 @@ export async function deleteEvent(formData: FormData) {
   if (error) throw new Error("删除事件失败，请稍后重试。");
   revalidatePath("/events");
   revalidatePath("/archive");
-  redirect("/events");
+  redirect("/events?notice=event-deleted");
 }
