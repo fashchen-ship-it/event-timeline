@@ -33,8 +33,8 @@ export function PixelIcon({ name, className = "", label }: PixelIconProps) {
   return <svg aria-hidden={label ? undefined : true} aria-label={label} className={className} role={label ? "img" : undefined} viewBox="0 0 16 16">{label && <title>{label}</title>}{art}</svg>;
 }
 
-export function PageShell({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <main className={`pixel-page ${className}`}><nav aria-label="桌面主导航" className="mb-6 hidden items-center gap-2 border-b-2 border-dashed border-[var(--line)] pb-4 sm:flex"><Link className="pixel-desktop-nav-link" href="/events">事线</Link><Link className="pixel-desktop-nav-link" href="/projects">项目</Link><Link className="pixel-desktop-nav-link" href="/calendar">月历</Link><Link className="pixel-desktop-nav-link" href="/archive">归档</Link><Link className="pixel-desktop-nav-link" href="/me">我的</Link></nav>{children}</main>;
+export function PageShell({ children, className = "", ...props }: { children: ReactNode; className?: string } & React.ComponentPropsWithoutRef<"main">) {
+  return <main {...props} className={`pixel-page ${className}`}><nav aria-label="桌面主导航" className="mb-6 hidden items-center gap-2 border-b-2 border-dashed border-[var(--line)] pb-4 sm:flex"><Link className="pixel-desktop-nav-link" href="/events">事线</Link><Link className="pixel-desktop-nav-link" href="/projects">项目</Link><Link className="pixel-desktop-nav-link" href="/calendar">月历</Link><Link className="pixel-desktop-nav-link" href="/archive">归档</Link><Link className="pixel-desktop-nav-link" href="/me">我的</Link></nav>{children}</main>;
 }
 
 export function PixelEmptyState({ icon, title, children }: { icon: PixelIconName; title: string; children?: ReactNode }) {
