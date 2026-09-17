@@ -19,14 +19,15 @@ export default async function BackupImportPage() {
       <header className="pixel-paper mt-5 p-5 sm:p-6">
         <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sage)]" name="file" /><p className="pixel-eyebrow">SAFE RESTORE</p></div>
         <h1 className="pixel-title mt-2 text-3xl">导入备份</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--soil)]">把从事线下载的 JSON 备份恢复成新的记录副本。不会清空、修改或覆盖你现在已有的事件。</p>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--soil)]">把从事线下载的 JSON 或完整恢复 ZIP 导入为新的记录副本。不会清空、修改或覆盖你现在已有的事件。</p>
       </header>
       <section className="pixel-card mt-5 p-5 sm:p-6">
         <h2 className="pixel-title text-lg">导入规则</h2>
         <ul className="mt-3 space-y-2 text-sm leading-7 text-[var(--soil)]">
           <li>· 同名分类和标签会沿用现有内容；其余数据会创建为新副本。</li>
           <li>· 事件、节点、清单与事件关联会一并恢复；原有置顶和最近浏览不会带回。</li>
-          <li>· 备份只含附件记录，不含附件文件本身，因此图片、文件不会自动恢复。</li>
+          <li>· 完整恢复 ZIP 会自动恢复并重新关联其中的附件原件；普通 JSON 不含附件原件，因此附件会跳过。</li>
+          <li>· 单独下载的附件 ZIP 用于留存原件，不能自动重新关联；请优先使用完整恢复 ZIP。</li>
         </ul>
       </section>
       <BackupImportForm />

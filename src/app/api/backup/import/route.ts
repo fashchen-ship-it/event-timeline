@@ -1,12 +1,15 @@
 import { z } from "zod";
+import { readZip } from "@/lib/backup/zip";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_BACKUP_SIZE = 10 * 1024 * 1024;
+const MAX_JSON_BACKUP_SIZE = 10 * 1024 * 1024;
+const MAX_FULL_BACKUP_SIZE = 40 * 1024 * 1024;
 const identifier = z.string().uuid();
 const nullableString = z.string().nullable().optional();
+const textDecoder = new TextDecoder();
 
 const backupSchema = z.object({
   format: z.literal("event-timeline-backup"),
@@ -31,7 +34,13 @@ const backupSchema = z.object({
     is_important: z.boolean().optional(),
     link_url: nullableString,
   }).passthrough()),
-  attachments: z.array(z.object({ id: identifier }).passthrough()).default([]),
+  attachments: z.array(z.object({
+    id: identifier,
+    node_id: identifier,
+    file_name: z.string().trim().min(1).max(255),
+    file_type: z.string().trim().min(1).max(255),
+    file_size: z.number().int().positive().max(10 * 1024 * 1024),
+  }).passthrough()).default([]),
   tags: z.array(z.object({ id: identifier, name: z.string().trim().min(1).max(30) }).passthrough()).default([]),
   event_tags: z.array(z.object({ event_id: identifier, tag_id: identifier }).passthrough()).default([]),
   node_tags: z.array(z.object({ node_id: identifier, tag_id: identifier }).passthrough()).default([]),
@@ -53,6 +62,21 @@ const backupSchema = z.object({
 
 type Backup = z.infer<typeof backupSchema>;
 
+const fullBackupManifestSchema = z.object({
+  format: z.literal("event-timeline-full-backup"),
+  version: z.literal(1),
+  attachment_files: z.array(z.object({
+    attachment_id: identifier,
+    archive_path: z.string().regex(/^files\/[^/]+$/),
+  })).default([]),
+});
+
+type ParsedImport = {
+  backup: Backup;
+  attachmentFiles: Map<string, Uint8Array>;
+  isFullBackup: boolean;
+};
+
 function failure(message: string, status = 400) {
   return Response.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -65,6 +89,32 @@ function uniqueBy<T>(items: T[], key: (item: T) => string) {
     seen.add(itemKey);
     return true;
   });
+}
+
+function safeFileName(value: string) {
+  const clean = value.replace(/[\\/:*?"<>|\x00-\x1f]/g, "_").replace(/^\.+/, "_").trim();
+  return (clean || "attachment").slice(0, 180);
+}
+
+async function parseImportFile(file: File): Promise<ParsedImport> {
+  const isZip = file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip";
+  if (!isZip) {
+    if (file.size > MAX_JSON_BACKUP_SIZE) throw new Error("JSON 备份文件不能超过 10MB。");
+    return { backup: backupSchema.parse(JSON.parse(await file.text())), attachmentFiles: new Map(), isFullBackup: false };
+  }
+  if (file.size > MAX_FULL_BACKUP_SIZE) throw new Error("完整备份 ZIP 不能超过 40MB。");
+  const files = readZip(new Uint8Array(await file.arrayBuffer()));
+  const backupFile = files.get("backup.json");
+  const manifestFile = files.get("full-backup.json");
+  if (!backupFile || !manifestFile) throw new Error("这不是从事线下载的完整备份 ZIP。");
+  const backup = backupSchema.parse(JSON.parse(textDecoder.decode(backupFile)));
+  const manifest = fullBackupManifestSchema.parse(JSON.parse(textDecoder.decode(manifestFile)));
+  const attachmentFiles = new Map<string, Uint8Array>();
+  manifest.attachment_files.forEach((item) => {
+    const source = files.get(item.archive_path);
+    if (source && source.length <= 10 * 1024 * 1024) attachmentFiles.set(item.attachment_id, source);
+  });
+  return { backup, attachmentFiles, isFullBackup: true };
 }
 
 async function importCollections(backup: Backup, userId: string, supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -113,17 +163,18 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return failure("请先登录后再导入备份。", 401);
 
-  let backup: Backup;
+  let parsedImport: ParsedImport;
   try {
     const formData = await request.formData();
     const file = formData.get("backup");
-    if (!(file instanceof File)) return failure("请选择 JSON 备份文件。");
-    if (file.size > MAX_BACKUP_SIZE) return failure("备份文件不能超过 10MB。");
-    backup = backupSchema.parse(JSON.parse(await file.text()));
+    if (!(file instanceof File)) return failure("请选择 JSON 或完整 ZIP 备份文件。");
+    parsedImport = await parseImportFile(file);
   } catch (error) {
     if (error instanceof z.ZodError) return failure("备份结构不正确，请选择从事线下载的 JSON 备份。");
-    return failure("无法读取备份文件，请检查文件后重试。");
+    return failure(error instanceof Error ? error.message : "无法读取备份文件，请检查文件后重试。");
   }
+
+  const { backup, attachmentFiles, isFullBackup } = parsedImport;
 
   try {
     const collections = await importCollections(backup, user.id, supabase);
@@ -184,6 +235,39 @@ export async function POST(request: Request) {
       importedNodes += 1;
     }
 
+    let restoredAttachments = 0;
+    let skippedAttachments = 0;
+    for (const attachment of uniqueBy(backup.attachments, (item) => item.id)) {
+      const file = attachmentFiles.get(attachment.id);
+      const nodeId = nodesMap.get(attachment.node_id);
+      if (!file || !nodeId) {
+        skippedAttachments += 1;
+        continue;
+      }
+      const eventId = eventsMap.get(backup.nodes.find((node) => node.id === attachment.node_id)?.event_id ?? "");
+      if (!eventId) {
+        skippedAttachments += 1;
+        continue;
+      }
+      const storagePath = `${user.id}/${eventId}/restore-${crypto.randomUUID()}-${safeFileName(attachment.file_name)}`;
+      const { error: uploadError } = await supabase.storage.from("timeline-files").upload(storagePath, file, { contentType: attachment.file_type, upsert: false });
+      if (uploadError) throw new Error("恢复附件原件失败。");
+      const { error: attachmentError } = await supabase.from("attachments").insert({
+        node_id: nodeId,
+        user_id: user.id,
+        file_name: attachment.file_name,
+        file_url: storagePath,
+        storage_path: storagePath,
+        file_type: attachment.file_type,
+        file_size: file.length,
+      });
+      if (attachmentError) {
+        await supabase.storage.from("timeline-files").remove([storagePath]);
+        throw new Error("保存恢复后的附件失败。");
+      }
+      restoredAttachments += 1;
+    }
+
     const nodeTagRows = uniqueBy(backup.node_tags.flatMap((item) => {
       const nodeId = nodesMap.get(item.node_id);
       const tagId = tags.sourceToNew.get(item.tag_id);
@@ -231,7 +315,9 @@ export async function POST(request: Request) {
           references: referenceRows.length,
           checklistItems: checklistRows.length - skippedChecklistItems,
         },
-        skippedAttachments: backup.attachments.length,
+        restoredAttachments,
+        skippedAttachments,
+        isFullBackup,
         skippedChecklistItems,
       },
     }, { headers: { "Cache-Control": "no-store" } });
