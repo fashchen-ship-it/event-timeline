@@ -9,6 +9,7 @@ import { EVENT_STATUS_LABELS, EVENT_STATUSES, type EventStatus } from "@/lib/eve
 import { createClient } from "@/lib/supabase/server";
 import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
 import { PixelHeaderCompanions } from "@/components/ui/pixel-companions";
+import { OfflineQuickCapture } from "@/components/offline/offline-quick-capture";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           </form>
         </div>
       </header>
+      <OfflineQuickCapture events={events.map(({ id, title }) => ({ id, title }))} />
 
       {!events.length ? (
         <div className="mt-8"><PixelEmptyState icon="sprout" title="还没有正在发生的事。">创建一条事件线，记录它是怎么一步步走到今天的。<Link className="pixel-button pixel-button-primary mt-5 min-h-11 px-4 text-sm" href="/events/new"><PixelIcon className="size-4" name="plus" />新建事件</Link><p className="mt-3 text-xs opacity-70">当前账号：{user.email}</p></PixelEmptyState></div>
