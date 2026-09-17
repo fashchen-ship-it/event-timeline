@@ -54,6 +54,29 @@ export async function getEventCollections() {
   return (data ?? []) as EventCollection[];
 }
 
+/** Uses attachment records to show the current user's storage footprint without reading file contents. */
+export async function getAttachmentStorageOverview() {
+  const supabase = await createClient();
+  const [{ data: attachments, error: attachmentError }, { data: nodes, error: nodeError }, { data: events, error: eventError }] = await Promise.all([
+    supabase.from("attachments").select("id, node_id, file_name, file_type, file_size, created_at").order("file_size", { ascending: false }),
+    supabase.from("event_nodes").select("id, event_id, title"),
+    supabase.from("events").select("id, title"),
+  ]);
+  if (attachmentError || nodeError || eventError) throw new Error("无法读取附件空间，请稍后刷新重试。");
+  const nodesById = new Map((nodes ?? []).map((node) => [node.id, node]));
+  const eventsById = new Map((events ?? []).map((event) => [event.id, event]));
+  const files = (attachments ?? []).map((attachment) => {
+    const node = nodesById.get(attachment.node_id);
+    return { ...attachment, nodeTitle: node?.title ?? "已删除的节点", eventId: node?.event_id ?? null, eventTitle: node ? eventsById.get(node.event_id)?.title ?? "未命名事线" : null };
+  });
+  return {
+    totalBytes: files.reduce((total, file) => total + Number(file.file_size || 0), 0),
+    imageBytes: files.filter((file) => file.file_type.startsWith("image/")).reduce((total, file) => total + Number(file.file_size || 0), 0),
+    fileCount: files.length,
+    largestFiles: files.slice(0, 20),
+  };
+}
+
 /** Falls back safely until the optional project-order migration has been applied. */
 export async function getProjectCollections() {
   const collections = await getEventCollections();
