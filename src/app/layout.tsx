@@ -3,6 +3,8 @@ import { OfflineSyncManager } from "@/components/offline/offline-sync-manager";
 import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
+const themeBootScript = `try { var theme = localStorage.getItem("event-timeline-theme"); if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme; } catch (_) {}`;
+
 export const metadata: Metadata = {
   title: {
     default: "事线",
@@ -21,7 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className="h-full">
+    <html lang="zh-CN" className="h-full" suppressHydrationWarning>
+      <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       <body className="min-h-full flex flex-col">
         <PwaRegister />
         <OfflineSyncManager />
