@@ -158,6 +158,8 @@ const eventIdSchema = z.string().uuid();
 const pinEventSchema = z.object({ id: z.string().uuid(), isPinned: z.enum(["true", "false"]) });
 const collectionSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(30), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/) });
 const newCollectionSchema = z.object({ name: z.string().trim().min(1).max(30), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/) });
+const collectionFavoriteSchema = z.object({ id: z.string().uuid(), isFavorite: z.enum(["true", "false"]) });
+const collectionMoveSchema = z.object({ id: z.string().uuid(), direction: z.enum(["up", "down"]) });
 const referenceSchema = z.object({
   sourceEventId: z.string().uuid(),
   targetEventId: z.string().uuid(),
@@ -197,6 +199,35 @@ export async function createEventCollection(formData: FormData) {
   if (error) throw new Error("创建项目分类失败；请稍后重试。");
   revalidatePath("/events");
   revalidatePath("/me");
+  revalidatePath("/projects");
+}
+
+export async function setEventCollectionFavorite(formData: FormData) {
+  const parsed = collectionFavoriteSchema.safeParse({ id: formData.get("id"), isFavorite: formData.get("isFavorite") });
+  if (!parsed.success) return;
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("event_collections").update({ is_favorite: parsed.data.isFavorite === "true" }).eq("id", parsed.data.id);
+  if (error) throw new Error("更新项目收藏失败，请稍后重试。");
+  revalidatePath("/projects");
+}
+
+export async function moveEventCollection(formData: FormData) {
+  const parsed = collectionMoveSchema.safeParse({ id: formData.get("id"), direction: formData.get("direction") });
+  if (!parsed.success) return;
+  const { supabase } = await requireUser();
+  const { data: current, error: currentError } = await supabase.from("event_collections").select("id, position, is_favorite").eq("id", parsed.data.id).maybeSingle();
+  if (currentError || !current) throw new Error("找不到要移动的项目。");
+  let neighborQuery = supabase.from("event_collections").select("id, position").eq("is_favorite", current.is_favorite).neq("id", current.id).limit(1);
+  neighborQuery = parsed.data.direction === "up"
+    ? neighborQuery.lt("position", current.position).order("position", { ascending: false })
+    : neighborQuery.gt("position", current.position).order("position", { ascending: true });
+  const { data: neighbor, error: neighborError } = await neighborQuery.maybeSingle();
+  if (neighborError) throw new Error("移动项目失败，请稍后重试。");
+  if (!neighbor) return;
+  const { error: firstError } = await supabase.from("event_collections").update({ position: neighbor.position }).eq("id", current.id);
+  if (firstError) throw new Error("移动项目失败，请稍后重试。");
+  const { error: secondError } = await supabase.from("event_collections").update({ position: current.position }).eq("id", neighbor.id);
+  if (secondError) throw new Error("移动项目失败，请稍后重试。");
   revalidatePath("/projects");
 }
 

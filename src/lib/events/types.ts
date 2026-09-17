@@ -14,6 +14,8 @@ export type EventCollection = {
   id: string;
   name: string;
   color: string;
+  is_favorite?: boolean;
+  position?: number;
 };
 
 export type EventReference = {

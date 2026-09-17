@@ -54,6 +54,19 @@ export async function getEventCollections() {
   return (data ?? []) as EventCollection[];
 }
 
+/** Falls back safely until the optional project-order migration has been applied. */
+export async function getProjectCollections() {
+  const collections = await getEventCollections();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("event_collections").select("id, is_favorite, position");
+  if (error) return { collections, supportsOrdering: false };
+  const settings = new Map((data ?? []).map((collection) => [collection.id, collection]));
+  return {
+    collections: collections.map((collection) => ({ ...collection, ...settings.get(collection.id) })),
+    supportsOrdering: true,
+  };
+}
+
 export async function getRecentEvents() {
   const supabase = await createClient();
   const { data, error } = await supabase
