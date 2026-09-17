@@ -7,6 +7,7 @@ import { queueNodeFromFormData } from "@/lib/offline/node-queue";
 import { createClient } from "@/lib/supabase/client";
 import { createNode } from "@/lib/timeline/actions";
 import { ALLOWED_FILE_TYPES, MAX_ATTACHMENTS, MAX_FILE_SIZE, type NodeActionState } from "@/lib/timeline/schema";
+import { MAX_SOURCE_IMAGE_SIZE, optimizeImageFiles } from "@/lib/uploads/image-optimizer";
 import type { EventSummary } from "@/lib/events/types";
 import { PixelIcon } from "@/components/ui/pixel";
 
@@ -32,9 +33,14 @@ export function QuickNodeForm({ events, defaultEventId }: { events: EventSummary
     const formData = new FormData(form);
     const eventId = String(formData.get("eventId") ?? "");
     const input = form.elements.namedItem("attachments") as HTMLInputElement | null;
-    const files = Array.from(input?.files ?? []);
-    if (files.length > MAX_ATTACHMENTS) { setUploadError(`一次最多上传 ${MAX_ATTACHMENTS} 个附件。`); return; }
-    if (files.some((file) => file.size > MAX_FILE_SIZE || !ALLOWED_FILE_TYPES.includes(file.type as (typeof ALLOWED_FILE_TYPES)[number]))) {
+    const sourceFiles = Array.from(input?.files ?? []);
+    if (sourceFiles.length > MAX_ATTACHMENTS) { setUploadError(`一次最多上传 ${MAX_ATTACHMENTS} 个附件。`); return; }
+    if (sourceFiles.some((file) => !ALLOWED_FILE_TYPES.includes(file.type as (typeof ALLOWED_FILE_TYPES)[number]) || (file.type.startsWith("image/") ? file.size > MAX_SOURCE_IMAGE_SIZE : file.size > MAX_FILE_SIZE))) {
+      setUploadError("图片原件最大 15 MB，其他附件最大 5 MB；仅支持图片、PDF、TXT、DOCX、XLSX。");
+      return;
+    }
+    const files = await optimizeImageFiles(sourceFiles);
+    if (files.some((file) => file.size > MAX_FILE_SIZE)) {
       setUploadError("附件仅支持图片、PDF、TXT、DOCX、XLSX，且每个文件不能超过 5 MB。");
       return;
     }
@@ -82,7 +88,7 @@ export function QuickNodeForm({ events, defaultEventId }: { events: EventSummary
       <div><label className="pixel-label" htmlFor="quick-title">发生了什么</label><input autoFocus className="pixel-input text-base" id="quick-title" maxLength={160} name="title" placeholder="例如：收到第一版结果" required />{state.fieldErrors?.title && <p className="mt-2 text-sm text-[var(--brick)]">{state.fieldErrors.title}</p>}</div>
       <div className="grid gap-5 sm:grid-cols-2"><div><label className="pixel-label" htmlFor="quick-date">发生日期</label><input className="pixel-input text-base" id="quick-date" name="eventDate" onChange={(event) => setMoment((value) => ({ ...value, date: event.target.value }))} type="date" value={moment.date} required />{state.fieldErrors?.eventDate && <p className="mt-2 text-sm text-[var(--brick)]">{state.fieldErrors.eventDate}</p>}</div><div><label className="pixel-label" htmlFor="quick-time">发生时间 <span className="font-normal text-[var(--soil)]/70">（选填）</span></label><input className="pixel-input text-base" id="quick-time" name="eventTime" onChange={(event) => setMoment((value) => ({ ...value, time: event.target.value }))} type="time" value={moment.time} /></div></div>
       <div><label className="pixel-label" htmlFor="quick-content">补充几句 <span className="font-normal text-[var(--soil)]/70">（选填）</span></label><textarea className="pixel-textarea min-h-28 text-base" id="quick-content" maxLength={10000} name="content" placeholder="把此刻想记住的内容写下来" /></div>
-      <div><label className="pixel-label" htmlFor="quick-attachments">图片或文件 <span className="font-normal text-[var(--soil)]/70">（选填，最多 6 个）</span></label><input accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.docx,.xlsx" className="block w-full text-sm text-[var(--soil)] file:mr-3 file:border-2 file:border-[var(--line)] file:bg-[var(--paper-deep)] file:px-3 file:py-2 file:text-sm file:font-bold file:text-[var(--forest)]" id="quick-attachments" multiple name="attachments" type="file" /><p className="mt-2 text-xs leading-5 text-[var(--soil)]">支持图片、PDF、TXT、DOCX、XLSX；每个文件最大 5 MB。</p></div>
+      <div><label className="pixel-label" htmlFor="quick-attachments">图片或文件 <span className="font-normal text-[var(--soil)]/70">（选填，最多 6 个）</span></label><input accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.docx,.xlsx" className="block w-full text-sm text-[var(--soil)] file:mr-3 file:border-2 file:border-[var(--line)] file:bg-[var(--paper-deep)] file:px-3 file:py-2 file:text-sm file:font-bold file:text-[var(--forest)]" id="quick-attachments" multiple name="attachments" type="file" /><p className="mt-2 text-xs leading-5 text-[var(--soil)]">普通照片会在上传前自动压缩并缩至最长边 1600px；GIF、PDF 与文档保持原文件。图片原件最大 15 MB，上传后的每个附件最大 5 MB。</p></div>
       <input name="linkUrl" type="hidden" value="" /><input name="tags" type="hidden" value="" /><input name="referenceTargetEventId" type="hidden" value="" /><input name="referenceTargetNodeId" type="hidden" value="" /><input name="referenceNote" type="hidden" value="" />
       <label className="flex min-h-12 items-center gap-3 border-2 border-[var(--line)] bg-[var(--paper-deep)] px-4 text-base text-[var(--soil)]"><input className="size-5 accent-[var(--forest)]" name="isImportant" type="checkbox" />标记为重要节点</label>
       <OfflineRecordNotice message={offlineMessage} />

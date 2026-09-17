@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { OfflineRecordNotice } from "@/components/offline/offline-record-notice";
 import { queueNodeFromFormData } from "@/lib/offline/node-queue";
 import { ALLOWED_FILE_TYPES, MAX_ATTACHMENTS, MAX_FILE_SIZE } from "@/lib/timeline/schema";
+import { MAX_SOURCE_IMAGE_SIZE, optimizeImageFiles } from "@/lib/uploads/image-optimizer";
 import type { EventSummary } from "@/lib/events/types";
 import { PixelIcon } from "@/components/ui/pixel";
 
@@ -34,9 +35,14 @@ export function OfflineQuickCapture({ events }: { events: Pick<EventSummary, "id
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     const input = form.elements.namedItem("attachments") as HTMLInputElement | null;
-    const files = Array.from(input?.files ?? []);
-    if (files.length > MAX_ATTACHMENTS) { setError(`一次最多保存 ${MAX_ATTACHMENTS} 个附件。`); return; }
-    if (files.some((file) => file.size > MAX_FILE_SIZE || !ALLOWED_FILE_TYPES.includes(file.type as (typeof ALLOWED_FILE_TYPES)[number]))) {
+    const sourceFiles = Array.from(input?.files ?? []);
+    if (sourceFiles.length > MAX_ATTACHMENTS) { setError(`一次最多保存 ${MAX_ATTACHMENTS} 个附件。`); return; }
+    if (sourceFiles.some((file) => !ALLOWED_FILE_TYPES.includes(file.type as (typeof ALLOWED_FILE_TYPES)[number]) || (file.type.startsWith("image/") ? file.size > MAX_SOURCE_IMAGE_SIZE : file.size > MAX_FILE_SIZE))) {
+      setError("图片原件最大 15 MB，其他附件最大 5 MB；仅支持图片、PDF、TXT、DOCX、XLSX。");
+      return;
+    }
+    const files = await optimizeImageFiles(sourceFiles);
+    if (files.some((file) => file.size > MAX_FILE_SIZE)) {
       setError("附件仅支持图片、PDF、TXT、DOCX、XLSX，且每个文件不能超过 5 MB。");
       return;
     }
@@ -59,7 +65,7 @@ export function OfflineQuickCapture({ events }: { events: Pick<EventSummary, "id
         <div><label className="pixel-label" htmlFor="offline-title">发生了什么</label><input className="pixel-input text-base" id="offline-title" maxLength={160} name="title" placeholder="例如：完成了第一步" required /></div>
         <div className="grid grid-cols-2 gap-3"><div><label className="pixel-label" htmlFor="offline-date">日期</label><input className="pixel-input text-base" id="offline-date" name="eventDate" onChange={(item) => setMoment((value) => ({ ...value, date: item.target.value }))} type="date" value={moment.date} required /></div><div><label className="pixel-label" htmlFor="offline-time">时间</label><input className="pixel-input text-base" id="offline-time" name="eventTime" onChange={(item) => setMoment((value) => ({ ...value, time: item.target.value }))} type="time" value={moment.time} /></div></div>
         <div><label className="pixel-label" htmlFor="offline-content">补充几句</label><textarea className="pixel-textarea min-h-24 text-base" id="offline-content" maxLength={10000} name="content" placeholder="写下想留下的内容" /></div>
-        <div><label className="pixel-label" htmlFor="offline-attachments">图片或文件（选填）</label><input accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.docx,.xlsx" className="block w-full text-sm text-[var(--soil)]" id="offline-attachments" multiple name="attachments" type="file" /></div>
+        <div><label className="pixel-label" htmlFor="offline-attachments">图片或文件（选填）</label><input accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.docx,.xlsx" className="block w-full text-sm text-[var(--soil)]" id="offline-attachments" multiple name="attachments" type="file" /><p className="mt-2 text-xs leading-5 text-[var(--soil)]">普通照片会先压缩并缩至最长边 1600px；GIF、PDF 与文档保持原文件。</p></div>
         <label className="flex min-h-11 items-center gap-3 border-2 border-[var(--line)] bg-[var(--paper-deep)] px-3 text-sm font-bold text-[var(--soil)]"><input className="size-5" name="isImportant" type="checkbox" />标记为重要节点</label>
         <OfflineRecordNotice message={message} />
         {error && <p className="border-2 border-[var(--brick)] bg-[#fff1e9] px-3 py-2 text-sm leading-6 text-[var(--brick)]">{error}</p>}
