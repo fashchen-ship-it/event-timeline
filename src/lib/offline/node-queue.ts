@@ -6,6 +6,7 @@ const STORE_NAME = "node-queue";
 const EVENT_NAME = "shixian-offline-queue-change";
 
 type ChecklistItem = { content: string; isCompleted: boolean };
+type OfflineAttachment = { id: string; fileName: string; fileType: string; fileSize: number; file: File };
 
 export type OfflineNodeDraft = {
   id: string;
@@ -23,6 +24,7 @@ export type OfflineNodeDraft = {
   referenceTargetEventId?: string;
   referenceTargetNodeId?: string;
   referenceNote?: string;
+  attachments: OfflineAttachment[];
   syncedNodeId?: string;
 };
 
@@ -78,7 +80,7 @@ async function removeDraft(id: string) {
   notifyQueueChange();
 }
 
-export async function queueNodeFromFormData(formData: FormData, checklistItems: ChecklistItem[] = []) {
+export async function queueNodeFromFormData(formData: FormData, checklistItems: ChecklistItem[] = [], files: File[] = []) {
   let uploads: unknown = [];
   try { uploads = JSON.parse(String(formData.get("uploads") ?? "[]")); } catch { uploads = null; }
   const parsed = nodeFormSchema.safeParse({
@@ -102,6 +104,7 @@ export async function queueNodeFromFormData(formData: FormData, checklistItems: 
     isImportant: parsed.data.isImportant, checklistItems: parsed.data.checklistItems,
     referenceTargetEventId: parsed.data.referenceTargetEventId, referenceTargetNodeId: parsed.data.referenceTargetNodeId,
     referenceNote: parsed.data.referenceNote,
+    attachments: files.map((file) => ({ id: crypto.randomUUID(), fileName: file.name, fileType: file.type, fileSize: file.size, file })),
   };
   await saveDraft(draft);
   return { draft };
@@ -132,13 +135,38 @@ async function replaceChecklist(draft: OfflineNodeDraft, nodeId: string) {
 }
 
 async function createReference(draft: OfflineNodeDraft, nodeId: string) {
-  if (!draft.referenceTargetEventId || !draft.referenceTargetNodeId) return;
   const supabase = createClient();
+  const { error: removeError } = await supabase.from("event_references").delete().eq("source_node_id", nodeId);
+  if (removeError) throw removeError;
+  if (!draft.referenceTargetEventId || !draft.referenceTargetNodeId) return;
   const { error } = await supabase.from("event_references").insert({
     user_id: draft.userId, source_event_id: draft.eventId, source_node_id: nodeId,
     target_event_id: draft.referenceTargetEventId, target_node_id: draft.referenceTargetNodeId, note: draft.referenceNote || null,
   });
   if (error) throw error;
+}
+
+async function syncAttachments(draft: OfflineNodeDraft, nodeId: string) {
+  const attachments = draft.attachments ?? [];
+  if (!attachments.length) return;
+  const supabase = createClient();
+  for (const attachment of attachments) {
+    const safeName = attachment.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const storagePath = `${draft.userId}/${draft.eventId}/offline-${draft.id}-${attachment.id}-${safeName}`;
+    const { error: uploadError } = await supabase.storage.from("timeline-files").upload(storagePath, attachment.file, {
+      contentType: attachment.fileType,
+      upsert: true,
+    });
+    if (uploadError) throw uploadError;
+    const { data: existing, error: lookupError } = await supabase.from("attachments").select("id").eq("storage_path", storagePath).maybeSingle();
+    if (lookupError) throw lookupError;
+    if (existing) continue;
+    const { error: attachmentError } = await supabase.from("attachments").insert({
+      node_id: nodeId, user_id: draft.userId, file_name: attachment.fileName, file_url: storagePath,
+      storage_path: storagePath, file_type: attachment.fileType, file_size: attachment.fileSize,
+    });
+    if (attachmentError) throw attachmentError;
+  }
 }
 
 async function syncDraft(draft: OfflineNodeDraft) {
@@ -157,6 +185,7 @@ async function syncDraft(draft: OfflineNodeDraft) {
   await replaceTags(nodeId, draft.userId, draft.tags);
   await replaceChecklist(draft, nodeId);
   await createReference(draft, nodeId);
+  await syncAttachments(draft, nodeId);
   const { error: touchError } = await supabase.from("events").update({ updated_at: new Date().toISOString() }).eq("id", draft.eventId);
   if (touchError) throw touchError;
 }

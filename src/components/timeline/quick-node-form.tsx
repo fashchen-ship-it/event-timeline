@@ -39,12 +39,11 @@ export function QuickNodeForm({ events, defaultEventId }: { events: EventSummary
       return;
     }
     if (!navigator.onLine) {
-      if (files.length) { setUploadError("离线记录暂不能带附件，请先移除附件后保存。恢复网络后可再补充。"); return; }
-      const queued = await queueNodeFromFormData(formData);
+      const queued = await queueNodeFromFormData(formData, [], files);
       if ("error" in queued) { setUploadError(queued.error); return; }
       form.reset();
       setMoment(currentLocalMoment());
-      setOfflineMessage("已离线保存到这台设备；恢复网络后会自动同步到所选事线。");
+      setOfflineMessage(`已离线保存到这台设备${files.length ? "（含附件）" : ""}；恢复网络后会自动同步到所选事线。`);
       return;
     }
 
