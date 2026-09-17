@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { OfflineRecordNotice } from "@/components/offline/offline-record-notice";
+import { queueNodeFromFormData } from "@/lib/offline/node-queue";
 import { createClient } from "@/lib/supabase/client";
 import { createNode } from "@/lib/timeline/actions";
 import { ALLOWED_FILE_TYPES, MAX_ATTACHMENTS, MAX_FILE_SIZE, type NodeActionState } from "@/lib/timeline/schema";
@@ -21,6 +23,7 @@ export function QuickNodeForm({ events, defaultEventId }: { events: EventSummary
   const [uploadError, setUploadError] = useState<string>();
   const [isUploading, setIsUploading] = useState(false);
   const [moment, setMoment] = useState(currentLocalMoment);
+  const [offlineMessage, setOfflineMessage] = useState<string>();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,6 +36,15 @@ export function QuickNodeForm({ events, defaultEventId }: { events: EventSummary
     if (files.length > MAX_ATTACHMENTS) { setUploadError(`一次最多上传 ${MAX_ATTACHMENTS} 个附件。`); return; }
     if (files.some((file) => file.size > MAX_FILE_SIZE || !ALLOWED_FILE_TYPES.includes(file.type as (typeof ALLOWED_FILE_TYPES)[number]))) {
       setUploadError("附件仅支持图片、PDF、TXT、DOCX、XLSX，且每个文件不能超过 5 MB。");
+      return;
+    }
+    if (!navigator.onLine) {
+      if (files.length) { setUploadError("离线记录暂不能带附件，请先移除附件后保存。恢复网络后可再补充。"); return; }
+      const queued = await queueNodeFromFormData(formData);
+      if ("error" in queued) { setUploadError(queued.error); return; }
+      form.reset();
+      setMoment(currentLocalMoment());
+      setOfflineMessage("已离线保存到这台设备；恢复网络后会自动同步到所选事线。");
       return;
     }
 
@@ -74,6 +86,7 @@ export function QuickNodeForm({ events, defaultEventId }: { events: EventSummary
       <div><label className="pixel-label" htmlFor="quick-attachments">图片或文件 <span className="font-normal text-[var(--soil)]/70">（选填，最多 6 个）</span></label><input accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.docx,.xlsx" className="block w-full text-sm text-[var(--soil)] file:mr-3 file:border-2 file:border-[var(--line)] file:bg-[var(--paper-deep)] file:px-3 file:py-2 file:text-sm file:font-bold file:text-[var(--forest)]" id="quick-attachments" multiple name="attachments" type="file" /><p className="mt-2 text-xs leading-5 text-[var(--soil)]">支持图片、PDF、TXT、DOCX、XLSX；每个文件最大 5 MB。</p></div>
       <input name="linkUrl" type="hidden" value="" /><input name="tags" type="hidden" value="" /><input name="referenceTargetEventId" type="hidden" value="" /><input name="referenceTargetNodeId" type="hidden" value="" /><input name="referenceNote" type="hidden" value="" />
       <label className="flex min-h-12 items-center gap-3 border-2 border-[var(--line)] bg-[var(--paper-deep)] px-4 text-base text-[var(--soil)]"><input className="size-5 accent-[var(--forest)]" name="isImportant" type="checkbox" />标记为重要节点</label>
+      <OfflineRecordNotice message={offlineMessage} />
       {(state.error || uploadError) && <p className="border-2 border-[var(--brick)] bg-[#fff1e9] px-3 py-2 text-sm leading-6 text-[var(--brick)]">{uploadError ?? state.error}</p>}
       <div className="flex gap-3 pt-2"><Link className="pixel-button pixel-button-secondary flex-1 text-base" href="/events">取消</Link><button className="pixel-button pixel-button-primary flex-1 text-base disabled:opacity-60" disabled={isUploading || isPending} type="submit"><PixelIcon className="size-4" name="plus" />{isUploading ? "正在上传…" : isPending ? "正在保存…" : "记下这一刻"}</button></div>
     </form>

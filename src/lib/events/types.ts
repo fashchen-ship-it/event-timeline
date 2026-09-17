@@ -1,5 +1,13 @@
 export const EVENT_STATUSES = ["active", "paused", "completed", "archived"] as const;
 
+export const EVENT_ICON_OPTIONS = ["◈", "✦", "◆", "◉", "▣", "✚", "☀", "☾", "✿", "⚑"] as const;
+
+/** Keeps automatically assigned icons stable instead of changing whenever an event is edited. */
+export function defaultEventIcon(seed: string) {
+  const total = [...seed].reduce((sum, character) => sum + character.codePointAt(0)!, 0);
+  return EVENT_ICON_OPTIONS[total % EVENT_ICON_OPTIONS.length];
+}
+
 export type EventStatus = (typeof EVENT_STATUSES)[number];
 
 export type EventCollection = {

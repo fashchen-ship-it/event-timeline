@@ -1,17 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createEvent, updateEvent } from "@/lib/events/actions";
-import { EVENT_STATUSES, EVENT_STATUS_LABELS, type EditableEvent, type EventCollection } from "@/lib/events/types";
+import { EVENT_ICON_OPTIONS, EVENT_STATUSES, EVENT_STATUS_LABELS, type EditableEvent, type EventCollection } from "@/lib/events/types";
 import type { EventActionState } from "@/lib/events/schema";
 
 type EventFormProps = { event?: EditableEvent; collections?: EventCollection[] };
 const initialState: EventActionState = {};
 
+function todayLocal() {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
 export function EventForm({ event, collections = [] }: EventFormProps) {
   const action = event ? updateEvent : createEvent;
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const [icon, setIcon] = useState(event?.icon ?? "");
   const tags = event?.tags.flatMap(({ tag }) => (tag ? [tag.name] : [])).join(",") ?? "";
 
   return (
@@ -30,7 +36,7 @@ export function EventForm({ event, collections = [] }: EventFormProps) {
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <label className="pixel-label" htmlFor="startDate">开始日期</label>
-          <input className="pixel-input text-base" defaultValue={event?.start_date ?? new Date().toISOString().slice(0, 10)} id="startDate" name="startDate" type="date" required />
+          <input className="pixel-input text-base" defaultValue={event?.start_date ?? todayLocal()} id="startDate" name="startDate" type="date" required />
           {state.fieldErrors?.startDate && <p className="mt-2 text-sm text-[#a94e43]">{state.fieldErrors.startDate}</p>}
         </div>
         <div>
@@ -41,11 +47,15 @@ export function EventForm({ event, collections = [] }: EventFormProps) {
           </select>
         </div>
       </div>
-      <div className="grid gap-5 sm:grid-cols-[120px_1fr]">
+      <div className="grid gap-5 sm:grid-cols-[190px_1fr]">
         <div>
-          <label className="pixel-label" htmlFor="icon">图标 <span className="font-normal text-[var(--soil)]/70">（选填）</span></label>
-          <input className="pixel-input text-center text-xl" defaultValue={event?.icon ?? ""} id="icon" maxLength={16} name="icon" placeholder="✦" />
+          <label className="pixel-label" htmlFor="icon">事件图标</label>
+          <select className="pixel-select text-base" id="icon" name="icon" onChange={(item) => setIcon(item.target.value)} value={icon}>
+            <option value="">自动随机</option>
+            {EVENT_ICON_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
           {state.fieldErrors?.icon && <p className="mt-2 text-sm text-[#a94e43]">{state.fieldErrors.icon}</p>}
+          <p className="mt-2 text-xs leading-5 text-[var(--soil)]/75">不选时会自动分配一个图标。</p>
         </div>
         <div>
           <label className="pixel-label" htmlFor="collection">分类 <span className="font-normal text-[var(--soil)]/70">（选填）</span></label>

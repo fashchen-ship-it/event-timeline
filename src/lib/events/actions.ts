@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { eventFormSchema, parseTagNames, type EventActionState } from "./schema";
+import { defaultEventIcon } from "./types";
 
 type ParsedEventForm =
   | { data: ReturnType<typeof eventFormSchema.parse> }
@@ -102,7 +103,7 @@ export async function createEvent(_previousState: EventActionState, formData: Fo
       description: parsed.data.description || null,
       start_date: parsed.data.startDate,
       status: parsed.data.status,
-      icon: parsed.data.icon || null,
+      icon: parsed.data.icon || defaultEventIcon(parsed.data.title),
       collection_id: collectionId,
     })
     .select("id")
@@ -115,7 +116,7 @@ export async function createEvent(_previousState: EventActionState, formData: Fo
     return { error: "事件已创建，但标签保存失败。请打开编辑页后重新保存标签。" };
   }
   revalidatePath("/events");
-  redirect(`/events/${event.id}/edit`);
+  redirect("/events");
 }
 
 export async function updateEvent(_previousState: EventActionState, formData: FormData): Promise<EventActionState> {

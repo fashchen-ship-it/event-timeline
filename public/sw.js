@@ -1,4 +1,4 @@
-const CACHE_NAME = "shixian-static-v2";
+const CACHE_NAME = "shixian-static-v3";
 const APP_SHELL = ["/offline.html", "/manifest.webmanifest", "/icon"];
 
 self.addEventListener("install", (event) => {
@@ -20,7 +20,18 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
   if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request).catch(() => caches.match("/offline.html")));
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(event.request);
+        if (response.ok && url.origin === self.location.origin) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(event.request, response.clone());
+        }
+        return response;
+      } catch {
+        return (await caches.match(event.request)) || (await caches.match("/offline.html"));
+      }
+    })());
     return;
   }
 

@@ -206,13 +206,6 @@ export async function getEventDetail(id: string, newestFirst: boolean, important
     .single();
   if (eventError || !event) notFound();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from("event_visits").upsert({ user_id: user.id, event_id: id, visited_at: new Date().toISOString() });
-  }
-
   let nodesQuery = supabase
     .from("event_nodes")
     .select("id, title, content, event_date, event_time, is_important, link_url, created_at, updated_at, attachments(id, file_name, file_type, file_size, storage_path), node_tags(tag:tags(id, name))")

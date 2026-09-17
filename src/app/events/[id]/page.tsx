@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EVENT_STATUS_LABELS } from "@/lib/events/types";
-import { getEventActivityStats, getEventDetail, getEventReferenceTargets, getEventRelations } from "@/lib/events/queries";
+import { getEventDetail, getEventReferenceTargets, getEventRelations } from "@/lib/events/queries";
 import { EventRelations } from "@/components/events/event-relations";
 import { EventActivitySummary } from "@/components/events/event-activity-summary";
 import { EventStatusSwitcher } from "@/components/events/event-status-switcher";
@@ -19,12 +19,17 @@ export default async function EventDetailPage({ params, searchParams }: { params
   const newestFirst = filters.order !== "asc";
   const importantOnly = filters.important === "1";
   const listView = filters.view === "list";
-  const [{ event, nodes }, targets, relations, stats] = await Promise.all([
-    getEventDetail(id, newestFirst, importantOnly),
-    getEventReferenceTargets(id),
-    getEventRelations(id),
-    getEventActivityStats(id),
-  ]);
+  const { event, nodes } = await getEventDetail(id, newestFirst, importantOnly);
+  const [targetsResult, relationsResult] = await Promise.allSettled([getEventReferenceTargets(id), getEventRelations(id)]);
+  const targets = targetsResult.status === "fulfilled" ? targetsResult.value : [];
+  const relations = relationsResult.status === "fulfilled" ? relationsResult.value : { incoming: [], outgoing: [] };
+  const orderedByDate = [...nodes].sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.event_time ?? "").localeCompare(b.event_time ?? ""));
+  const stats = {
+    totalNodes: nodes.length,
+    importantNodes: nodes.filter((node) => node.is_important).length,
+    firstNodeDate: orderedByDate[0]?.event_date ?? null,
+    lastNodeDate: orderedByDate.at(-1)?.event_date ?? null,
+  };
   const tags = event.event_tags.flatMap(({ tag }) => (tag ? [tag.name] : []));
   const filterUrl = (next: { order?: "asc" | "desc"; important?: "1"; view?: "timeline" | "list" }) => {
     const query = new URLSearchParams();
@@ -39,13 +44,14 @@ export default async function EventDetailPage({ params, searchParams }: { params
     <PageShell>
       <Link className="inline-flex items-center gap-1 text-sm font-bold text-[var(--forest)] underline underline-offset-4" href="/events"><span aria-hidden>←</span> 返回事件</Link>
       <header className="pixel-paper mt-5 p-5 sm:p-7">
-        <div className="flex items-start justify-between gap-4">
+        <div className="sm:flex sm:items-start sm:justify-between sm:gap-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="grid size-12 shrink-0 place-items-center rounded-md border-2 border-[var(--soil)] bg-[var(--paper-deep)] text-2xl text-[var(--forest)] shadow-[2px_2px_0_var(--line)]">{event.icon || <PixelIcon className="size-6" name="journal" />}</span>
-            <div className="min-w-0"><p className="pixel-eyebrow">EVENT DOSSIER</p><h1 className="pixel-title mt-1 break-words text-2xl sm:text-3xl">{event.title}</h1><p className="mt-2 text-sm font-bold text-[var(--forest)]">{EVENT_STATUS_LABELS[event.status]}</p><EventStatusSwitcher eventId={event.id} status={event.status} /></div>
+            <div className="min-w-0"><p className="pixel-eyebrow">EVENT DOSSIER</p><h1 className="pixel-title mt-1 break-words text-2xl sm:text-3xl">{event.title}</h1><p className="mt-2 text-sm font-bold text-[var(--forest)]">{EVENT_STATUS_LABELS[event.status]}</p></div>
           </div>
-          <div className="flex shrink-0 gap-2"><Link aria-label="快速记录节点" className="pixel-button pixel-button-primary min-h-10 px-3 text-sm" href={`/quick?event=${event.id}`}><PixelIcon className="size-4" name="plus" /><span className="hidden sm:inline">快记</span></Link><a aria-label="导出 CSV" className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href={`/events/${event.id}/export`}><PixelIcon className="size-4" name="file" /><span className="hidden sm:inline">导出</span></a><Link aria-label="编辑事件" className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href={`/events/${event.id}/edit`}><PixelIcon className="size-4" name="edit" />编辑</Link></div>
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-0 sm:flex sm:shrink-0"><Link aria-label="快速记录节点" className="pixel-button pixel-button-primary min-h-10 min-w-0 justify-center px-2 text-sm sm:px-3" href={`/quick?event=${event.id}`}><PixelIcon className="size-4" name="plus" /><span>快记</span></Link><a aria-label="导出 CSV" className="pixel-button pixel-button-secondary min-h-10 min-w-0 justify-center px-2 text-sm sm:px-3" href={`/events/${event.id}/export`}><PixelIcon className="size-4" name="file" /><span>导出</span></a><Link aria-label="编辑事件" className="pixel-button pixel-button-secondary min-h-10 min-w-0 justify-center px-2 text-sm sm:px-3" href={`/events/${event.id}/edit`}><PixelIcon className="size-4" name="edit" /><span>编辑</span></Link></div>
         </div>
+        <EventStatusSwitcher eventId={event.id} status={event.status} />
         {event.description && <p className="mt-5 whitespace-pre-wrap text-base leading-7 text-[var(--soil)]">{event.description}</p>}
         <div className="mt-5 flex flex-wrap gap-2"><span className="pixel-chip"><PixelIcon className="size-3" name="calendar" />开始于 {event.start_date}</span>{tags.map((tag) => <span className="pixel-chip" key={tag}>{tag}</span>)}</div>
         <EventActivitySummary startDate={event.start_date} stats={stats} />

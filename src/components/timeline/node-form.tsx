@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { OfflineRecordNotice } from "@/components/offline/offline-record-notice";
+import { queueNodeFromFormData } from "@/lib/offline/node-queue";
 import { createClient } from "@/lib/supabase/client";
 import { deleteAttachment, createNode, updateNode } from "@/lib/timeline/actions";
 import { ALLOWED_FILE_TYPES, MAX_ATTACHMENTS, MAX_FILE_SIZE, type NodeActionState } from "@/lib/timeline/schema";
@@ -33,6 +35,7 @@ export function NodeForm({ eventId, node, referenceTargets = [] }: NodeFormProps
   const existingReference = node?.references[0];
   const [referenceEventId, setReferenceEventId] = useState(existingReference?.target_event_id ?? "");
   const [referenceNodeId, setReferenceNodeId] = useState(existingReference?.target_node_id ?? "");
+  const [offlineMessage, setOfflineMessage] = useState<string>();
   const tags = node?.node_tags.flatMap(({ tag }) => (tag ? [tag.name] : [])).join(",") ?? "";
 
   function updateChecklist(index: number, next: Partial<ChecklistDraft>) {
@@ -50,6 +53,17 @@ export function NodeForm({ eventId, node, referenceTargets = [] }: NodeFormProps
     if (files.length > MAX_ATTACHMENTS) { setUploadError(`一次最多上传 ${MAX_ATTACHMENTS} 个附件。`); return; }
     if (files.some((file) => file.size > MAX_FILE_SIZE || !ALLOWED_FILE_TYPES.includes(file.type as (typeof ALLOWED_FILE_TYPES)[number]))) {
       setUploadError("附件仅支持图片、PDF、TXT、DOCX、XLSX，且每个文件不能超过 5 MB。");
+      return;
+    }
+    if (!navigator.onLine) {
+      if (node) { setUploadError("离线状态暂只支持新建记录；编辑已有节点请恢复网络后再保存。"); return; }
+      if (files.length) { setUploadError("离线记录暂不能带附件，请先移除附件后保存。恢复网络后可再补充。"); return; }
+      const queued = await queueNodeFromFormData(formData, checklistItems.map((item) => ({ ...item, content: item.content.trim() })).filter((item) => item.content));
+      if ("error" in queued) { setUploadError(queued.error); return; }
+      form.reset();
+      setChecklistItems([]);
+      setMoment(currentLocalMoment());
+      setOfflineMessage("已离线保存到这台设备；恢复网络后会自动同步到这条事线。");
       return;
     }
 
@@ -91,6 +105,7 @@ export function NodeForm({ eventId, node, referenceTargets = [] }: NodeFormProps
       <section className="border-2 border-dashed border-[var(--line)] bg-[var(--paper-deep)] p-4"><div className="flex items-center justify-between gap-3"><div><h2 className="pixel-label mb-0">节点清单 <span className="font-normal text-[var(--soil)]/70">（选填）</span></h2><p className="mt-1 text-xs leading-5 text-[var(--soil)]">记录这个节点需要跟进的小项，最多 12 条。</p></div><button className="pixel-button pixel-button-secondary min-h-9 px-3 text-sm" disabled={checklistItems.length >= 12} onClick={() => setChecklistItems((items) => [...items, { content: "", isCompleted: false }])} type="button"><PixelIcon className="size-4" name="plus" />添加</button></div>{checklistItems.length > 0 && <div className="mt-4 space-y-2">{checklistItems.map((item, index) => <div className="flex items-center gap-2" key={index}><input aria-label={`完成第 ${index + 1} 个清单项`} checked={item.isCompleted} className="size-5 accent-[var(--forest)]" onChange={(event) => updateChecklist(index, { isCompleted: event.target.checked })} type="checkbox" /><input aria-label={`第 ${index + 1} 个清单项`} className="pixel-input min-w-0 flex-1 py-2 text-sm" maxLength={240} onChange={(event) => updateChecklist(index, { content: event.target.value })} placeholder="写下一项要点" value={item.content} /><button aria-label={`删除第 ${index + 1} 个清单项`} className="min-h-10 px-2 font-bold text-[var(--brick)]" onClick={() => setChecklistItems((items) => items.filter((_, itemIndex) => itemIndex !== index))} type="button">×</button></div>)}</div>}{state.fieldErrors?.checklistItems && <p className="mt-2 text-sm text-[var(--brick)]">{state.fieldErrors.checklistItems}</p>}</section>
       <label className="flex min-h-12 items-center gap-3 border-2 border-[var(--line)] bg-[var(--paper-deep)] px-4 text-base text-[var(--soil)]"><input className="size-5 accent-[var(--forest)]" defaultChecked={node?.is_important} name="isImportant" type="checkbox" />标记为重要节点</label>
       <div><label className="pixel-label" htmlFor="attachments">图片或文件 <span className="font-normal text-[var(--soil)]/70">（选填，最多 6 个）</span></label><input accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.docx,.xlsx" className="block w-full text-sm text-[var(--soil)] file:mr-3 file:border-2 file:border-[var(--line)] file:bg-[var(--paper-deep)] file:px-3 file:py-2 file:text-sm file:font-bold file:text-[var(--forest)]" id="attachments" multiple name="attachments" type="file" /><p className="mt-2 text-xs leading-5 text-[var(--soil)]">支持图片、PDF、TXT、DOCX、XLSX；每个文件最大 5 MB。</p>{node && <ExistingAttachments attachments={node.attachments} eventId={eventId} nodeId={node.id} />}</div>
+      <OfflineRecordNotice message={offlineMessage} />
       {(state.error || uploadError) && <p className="border-2 border-[var(--brick)] bg-[#fff1e9] px-3 py-2 text-sm leading-6 text-[var(--brick)]">{uploadError ?? state.error}</p>}
       <div className="flex gap-3 pt-2"><Link className="pixel-button pixel-button-secondary flex-1 text-base" href={`/events/${eventId}`}>取消</Link><button className="pixel-button pixel-button-primary flex-1 text-base disabled:cursor-not-allowed disabled:opacity-60" disabled={isUploading || isPending} type="submit">{isUploading ? "正在上传…" : isPending ? "正在保存…" : "保存节点"}</button></div>
     </form>

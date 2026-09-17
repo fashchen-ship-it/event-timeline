@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OfflineSyncManager } from "@/components/offline/offline-sync-manager";
 import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="zh-CN" className="h-full">
       <body className="min-h-full flex flex-col">
         <PwaRegister />
+        <OfflineSyncManager />
         {children}
       </body>
     </html>
