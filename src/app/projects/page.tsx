@@ -30,8 +30,9 @@ function relativeUpdate(value: string) {
 }
 
 type ProjectSort = "updated" | "count" | "title";
+type ProjectView = "shelves" | "board";
 
-export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string; sort?: string }> }) {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string; sort?: string; view?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -39,6 +40,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const [collections, events, filters] = await Promise.all([getEventCollections(), getEventsForProjects(), searchParams]);
   const selectedStatus: EventStatus | "all" = EVENT_STATUSES.includes(filters.status as EventStatus) && filters.status !== "archived" ? filters.status as EventStatus : "all";
   const selectedSort: ProjectSort = filters.sort === "count" || filters.sort === "title" ? filters.sort : "updated";
+  const selectedView: ProjectView = filters.view === "board" ? "board" : "shelves";
   const groups = collections.map((collection) => {
     const groupEvents = events.filter((event) => event.collection_id === collection.id).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     return { collection, events: groupEvents, activeCount: groupEvents.filter((event) => event.status === "active").length, latest: groupEvents[0] ?? null };
@@ -48,6 +50,16 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     return (b.latest?.updated_at ?? "").localeCompare(a.latest?.updated_at ?? "");
   });
   const ungrouped = events.filter((event) => !event.collection_id).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  const projectHref = (view: ProjectView) => {
+    const query = new URLSearchParams();
+    if (selectedStatus !== "all") query.set("status", selectedStatus);
+    if (selectedSort !== "updated") query.set("sort", selectedSort);
+    if (view === "board") query.set("view", "board");
+    const value = query.toString();
+    return `/projects${value ? `?${value}` : ""}`;
+  };
+  const boardStatuses: EventStatus[] = ["active", "paused", "completed"];
+  const collectionById = new Map(collections.map((collection) => [collection.id, collection]));
 
   return (
     <PageShell>
@@ -55,13 +67,13 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <p className="pixel-eyebrow">PROJECT SHELVES</p>
         <div className="mt-2 flex items-start justify-between gap-3">
           <div><h1 className="pixel-title text-3xl sm:text-4xl">项目分组</h1><p className="mt-2 text-sm leading-6 text-[var(--soil)]">按主题收好事线；打开一个分组，就能继续记录它。</p></div>
-          <div className="flex shrink-0 gap-2"><Link aria-label="管理项目分类" className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href="/me#collection-management"><PixelIcon className="size-4" name="edit" /><span className="hidden sm:inline">管理</span></Link><Link className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href="/events"><PixelIcon className="size-4" name="journal" />事线</Link></div>
+          <div className="flex shrink-0 gap-2"><Link aria-label="切换项目视图" className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href={projectHref(selectedView === "board" ? "shelves" : "board")}><PixelIcon className="size-4" name={selectedView === "board" ? "journal" : "map"} /><span className="hidden sm:inline">{selectedView === "board" ? "书架" : "看板"}</span></Link><Link aria-label="管理项目分类" className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href="/me#collection-management"><PixelIcon className="size-4" name="edit" /><span className="hidden sm:inline">管理</span></Link><Link className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" href="/events"><PixelIcon className="size-4" name="journal" />事线</Link></div>
         </div>
       </header>
 
       <p className="mt-4 text-xs leading-6 text-[var(--soil)]">删除项目分类不会删除里面的事线；它们会保留并移动到“尚未分组”。</p>
-      <form action="/projects" className="pixel-paper mt-4 grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"><label className="sr-only" htmlFor="project-status">项目状态筛选</label><select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedStatus} id="project-status" name="status"><option value="all">包含任意状态</option>{EVENT_STATUSES.filter((status) => status !== "archived").map((status) => <option key={status} value={status}>包含{EVENT_STATUS_LABELS[status]}</option>)}</select><label className="sr-only" htmlFor="project-sort">项目排序</label><select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedSort} id="project-sort" name="sort"><option value="updated">按最近更新</option><option value="count">按事线数量</option><option value="title">按项目名称</option></select><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">整理</button></form>
-      {groups.length ? <>
+      <form action="/projects" className="pixel-paper mt-4 grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"><input name="view" type="hidden" value={selectedView === "board" ? "board" : ""} /><label className="sr-only" htmlFor="project-status">项目状态筛选</label><select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedStatus} id="project-status" name="status"><option value="all">包含任意状态</option>{EVENT_STATUSES.filter((status) => status !== "archived").map((status) => <option key={status} value={status}>包含{EVENT_STATUS_LABELS[status]}</option>)}</select><label className="sr-only" htmlFor="project-sort">项目排序</label><select className="pixel-select min-w-0 py-2 text-sm" defaultValue={selectedSort} id="project-sort" name="sort"><option value="updated">按最近更新</option><option value="count">按事线数量</option><option value="title">按项目名称</option></select><button className="pixel-button pixel-button-secondary min-h-10 px-3 text-sm" type="submit">整理</button></form>
+      {selectedView === "board" ? <section className="mt-7" aria-labelledby="project-board-heading"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--sky)]" name="map" /><h2 className="pixel-title text-xl" id="project-board-heading">项目看板</h2></div><span className="pixel-chip">按状态总览</span></div><p className="mt-2 text-sm leading-6 text-[var(--soil)]">把所有未归档事线按状态摆在一起，方便第一眼找到正在推进的项目。</p><div className="mt-4 flex snap-x gap-4 overflow-x-auto pb-3 sm:grid sm:grid-cols-3 sm:overflow-visible">{boardStatuses.filter((status) => selectedStatus === "all" || selectedStatus === status).map((status) => { const laneEvents = events.filter((event) => event.status === status); return <section className="w-[17rem] shrink-0 snap-start border-2 border-[var(--line)] bg-[var(--paper-deep)] p-3 sm:w-auto" key={status}><div className="flex items-center justify-between gap-2"><h3 className="font-bold text-[var(--ink)]">{EVENT_STATUS_LABELS[status]}</h3><span className="pixel-chip">{laneEvents.length}</span></div><div className="mt-3 space-y-3">{laneEvents.length ? laneEvents.map((event) => { const collection = event.collection_id ? collectionById.get(event.collection_id) : null; return <Link className="block border-2 border-[var(--line)] bg-[var(--card)] p-3 shadow-[2px_2px_0_rgba(118,83,60,0.22)] hover:bg-[#fff2d7]" href={`/events/${event.id}`} key={event.id}><div className="flex items-start gap-2"><span className="grid size-8 shrink-0 place-items-center border border-[var(--line)]" style={{ backgroundColor: collection ? `${collection.color}2e` : "#f6ead0", color: collection?.color ?? "var(--soil)" }}>{event.icon || <PixelIcon className="size-4" name="journal" />}</span><div className="min-w-0"><p className="truncate text-sm font-bold text-[var(--ink)]">{event.title}</p><p className="mt-1 text-xs text-[var(--soil)]">{collection?.name ?? "尚未分组"} · {relativeUpdate(event.updated_at)}</p></div></div></Link>; }) : <p className="border-2 border-dashed border-[var(--line)] bg-[var(--card)] p-3 text-sm text-[var(--soil)]">这里暂时没有事线。</p>}</div></section>; })}</div></section> : groups.length ? <>
         <section className="mt-7" aria-labelledby="project-groups-heading">
           <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--wheat)]" name="briefcase" /><h2 className="pixel-title text-xl" id="project-groups-heading">我的项目</h2></div><span className="pixel-chip">{groups.length} 组</span></div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">

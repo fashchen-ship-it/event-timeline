@@ -156,7 +156,8 @@ export async function updateEvent(_previousState: EventActionState, formData: Fo
 
 const eventIdSchema = z.string().uuid();
 const pinEventSchema = z.object({ id: z.string().uuid(), isPinned: z.enum(["true", "false"]) });
-const collectionSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(30) });
+const collectionSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(30), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/) });
+const newCollectionSchema = z.object({ name: z.string().trim().min(1).max(30), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/) });
 const referenceSchema = z.object({
   sourceEventId: z.string().uuid(),
   targetEventId: z.string().uuid(),
@@ -176,13 +177,27 @@ export async function setEventPinned(formData: FormData) {
 }
 
 export async function renameEventCollection(formData: FormData) {
-  const parsed = collectionSchema.safeParse({ id: formData.get("id"), name: formData.get("name") });
-  if (!parsed.success) throw new Error("分类名称应为 1 到 30 个字符。");
+  const parsed = collectionSchema.safeParse({ id: formData.get("id"), name: formData.get("name"), color: formData.get("color") });
+  if (!parsed.success) throw new Error("分类名称应为 1 到 30 个字符，颜色格式无效。");
   const { supabase } = await requireUser();
-  const { error } = await supabase.from("event_collections").update({ name: parsed.data.name }).eq("id", parsed.data.id);
+  const { error } = await supabase.from("event_collections").update({ name: parsed.data.name, color: parsed.data.color }).eq("id", parsed.data.id);
   if (error) throw new Error("修改分类失败；可能已存在同名分类。");
   revalidatePath("/events");
   revalidatePath("/me");
+  revalidatePath("/projects");
+}
+
+export async function createEventCollection(formData: FormData) {
+  const parsed = newCollectionSchema.safeParse({ name: formData.get("name"), color: formData.get("color") });
+  if (!parsed.success) throw new Error("项目名称应为 1 到 30 个字符，颜色格式无效。");
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("event_collections")
+    .upsert({ user_id: user.id, name: parsed.data.name, color: parsed.data.color }, { onConflict: "user_id,name" });
+  if (error) throw new Error("创建项目分类失败；请稍后重试。");
+  revalidatePath("/events");
+  revalidatePath("/me");
+  revalidatePath("/projects");
 }
 
 export async function deleteEventCollection(formData: FormData) {
@@ -193,6 +208,7 @@ export async function deleteEventCollection(formData: FormData) {
   if (error) throw new Error("删除分类失败，请稍后重试。");
   revalidatePath("/events");
   revalidatePath("/me");
+  revalidatePath("/projects");
 }
 
 export async function createEventReference(
