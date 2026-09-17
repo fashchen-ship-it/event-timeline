@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { EditableNode, EventDetail, GlobalTimelineNode, TimelineNode } from "@/lib/timeline/types";
 import type { NodeReferenceTarget } from "@/lib/timeline/types";
-import type { EditableEvent, EventCollection, EventReference, EventSummary, ProjectEventSummary } from "./types";
+import type { EditableEvent, EventCollection, EventReference, EventSummary, ProjectEventSummary, ProjectTreeNode } from "./types";
 
 const eventSummarySelect = "id, title, description, status, start_date, icon, updated_at, is_pinned, collection_id, collection:event_collections!events_collection_id_fkey(id, name, color), event_nodes(count), event_tags(tag:tags(id, name))";
 
@@ -138,6 +138,42 @@ export async function getEventRelations(eventId: string) {
       return result ? [result] : [];
     }),
   };
+}
+
+/** Builds a read-only hierarchy from the existing "project → parent" event links. */
+export async function getEventProjectTree(rootEventId: string) {
+  const supabase = await createClient();
+  const [{ data: references, error: referenceError }, { data: events, error: eventError }] = await Promise.all([
+    supabase.from("event_references").select("source_event_id, target_event_id").is("source_node_id", null).is("target_node_id", null),
+    supabase.from("events").select("id, title, icon, status, event_nodes(count)"),
+  ]);
+  if (referenceError || eventError) throw new Error("无法读取项目层级，请稍后刷新重试。");
+  const eventMap = new Map((events ?? []).map((event) => [event.id, event]));
+  const childrenByParent = new Map<string, string[]>();
+  for (const reference of references ?? []) {
+    const children = childrenByParent.get(reference.target_event_id) ?? [];
+    children.push(reference.source_event_id);
+    childrenByParent.set(reference.target_event_id, children);
+  }
+  function build(parentId: string, ancestors: Set<string>): ProjectTreeNode[] {
+    const childIds = [...new Set(childrenByParent.get(parentId) ?? [])];
+    return childIds.flatMap((id) => {
+      if (ancestors.has(id)) return [];
+      const event = eventMap.get(id);
+      if (!event) return [];
+      const nextAncestors = new Set(ancestors);
+      nextAncestors.add(id);
+      return [{
+        id: event.id,
+        title: event.title,
+        icon: event.icon,
+        status: event.status as ProjectTreeNode["status"],
+        nodeCount: event.event_nodes?.[0]?.count ?? 0,
+        children: build(event.id, nextAncestors),
+      }];
+    }).sort((a, b) => a.title.localeCompare(b.title, "zh-Hans-CN"));
+  }
+  return build(rootEventId, new Set([rootEventId]));
 }
 
 export async function getEventActivityStats(eventId: string) {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EVENT_STATUS_LABELS } from "@/lib/events/types";
-import { getEventDetail, getEventReferenceTargets, getEventRelations } from "@/lib/events/queries";
+import { getEventDetail, getEventProjectTree, getEventReferenceTargets, getEventRelations } from "@/lib/events/queries";
 import { EventRelations } from "@/components/events/event-relations";
 import { EventActivitySummary } from "@/components/events/event-activity-summary";
 import { EventStatusSwitcher } from "@/components/events/event-status-switcher";
@@ -23,6 +23,8 @@ export default async function EventDetailPage({ params, searchParams }: { params
   const [targetsResult, relationsResult] = await Promise.allSettled([getEventReferenceTargets(id), getEventRelations(id)]);
   const targets = targetsResult.status === "fulfilled" ? targetsResult.value : [];
   const relations = relationsResult.status === "fulfilled" ? relationsResult.value : { incoming: [], outgoing: [] };
+  const treeResult = relations.incoming.length ? await Promise.allSettled([getEventProjectTree(id)]) : [];
+  const projectTree = treeResult[0]?.status === "fulfilled" ? treeResult[0].value : [];
   const orderedByDate = [...nodes].sort((a, b) => a.event_date.localeCompare(b.event_date) || (a.event_time ?? "").localeCompare(b.event_time ?? ""));
   const stats = {
     totalNodes: nodes.length,
@@ -57,7 +59,7 @@ export default async function EventDetailPage({ params, searchParams }: { params
         <EventActivitySummary startDate={event.start_date} stats={stats} />
       </header>
 
-      <EventRelations eventId={event.id} expandedProjectId={filters.expand} incoming={relations.incoming} outgoing={relations.outgoing} targets={targets} />
+      <EventRelations eventId={event.id} expandedProjectId={filters.expand} incoming={relations.incoming} outgoing={relations.outgoing} projectTree={projectTree} targets={targets} />
 
       <section className="mt-9">
         {nodes.length > 0 && <NodeFinder />}

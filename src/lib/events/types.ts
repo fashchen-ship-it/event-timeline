@@ -32,6 +32,15 @@ export type EventReference = {
   timeline_nodes: { id: string; title: string; event_date: string; event_time: string | null; is_important: boolean }[];
 };
 
+export type ProjectTreeNode = {
+  id: string;
+  title: string;
+  icon: string | null;
+  status: EventStatus;
+  nodeCount: number;
+  children: ProjectTreeNode[];
+};
+
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   active: "进行中",
   paused: "已暂停",

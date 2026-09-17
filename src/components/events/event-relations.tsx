@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { createEventReference, deleteEventReference, type ReferenceActionState } from "@/lib/events/actions";
-import { EVENT_STATUS_LABELS, type EventReference } from "@/lib/events/types";
+import { EVENT_STATUS_LABELS, type EventReference, type ProjectTreeNode } from "@/lib/events/types";
 import { PixelIcon } from "@/components/ui/pixel";
 
 type ReferenceTarget = { id: string; title: string };
@@ -13,6 +13,7 @@ type EventRelationsProps = {
   targets: ReferenceTarget[];
   outgoing: EventReference[];
   incoming: EventReference[];
+  projectTree: ProjectTreeNode[];
 };
 
 const initialState: ReferenceActionState = {};
@@ -58,7 +59,11 @@ function RelatedProjectCards({ eventId, expandedProjectId, relations }: { eventI
   </article>; })}</div>;
 }
 
-export function EventRelations({ eventId, expandedProjectId, targets, outgoing, incoming }: EventRelationsProps) {
+function ProjectTreeBranch({ nodes, depth = 0 }: { nodes: ProjectTreeNode[]; depth?: number }) {
+  return <ol className={depth ? "mt-2 space-y-2 border-l-2 border-dashed border-[var(--line)] pl-3" : "mt-3 space-y-2"}>{nodes.map((node) => <li key={node.id}><Link className="flex min-h-11 items-center gap-2 border-2 border-[var(--line)] bg-[var(--card)] px-3 py-2 hover:bg-[#fff2d7]" href={`/events/${node.id}`}><span className="grid size-7 shrink-0 place-items-center border border-[var(--line)] bg-[var(--paper-deep)] text-sm text-[var(--forest)]">{node.icon || <PixelIcon className="size-4" name="briefcase" />}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-[var(--ink)]">{node.title}</span><span className="text-xs text-[var(--soil)]">{EVENT_STATUS_LABELS[node.status]} · {node.nodeCount} 个节点</span></span><PixelIcon className="size-4 shrink-0 text-[var(--soil)]" name="link" /></Link>{node.children.length > 0 && <ProjectTreeBranch depth={depth + 1} nodes={node.children} />}</li>)}</ol>;
+}
+
+export function EventRelations({ eventId, expandedProjectId, targets, outgoing, incoming, projectTree }: EventRelationsProps) {
   const [state, formAction, isPending] = useActionState(createEventReference, initialState);
   return (
     <section className="pixel-paper mt-8 p-5 sm:p-6">
@@ -79,6 +84,7 @@ export function EventRelations({ eventId, expandedProjectId, targets, outgoing, 
       {(state.error || state.success) && <p className={`mt-3 text-sm ${state.error ? "text-[var(--brick)]" : "text-[var(--forest)]"}`}>{state.error ?? state.success}</p>}
 
       {outgoing.length > 0 && <div className="mt-6"><h3 className="text-sm font-bold text-[var(--ink)]">这件事关联到</h3><RelationList direction="outgoing" eventId={eventId} relations={outgoing} /></div>}
+      {projectTree.length > 0 && <div className="mt-6 border-2 border-dashed border-[var(--line)] bg-[var(--paper-deep)] p-3"><div className="flex items-center gap-2"><PixelIcon className="size-4 text-[var(--sage)]" name="map" /><h3 className="text-sm font-bold text-[var(--ink)]">项目层级</h3></div><p className="mt-1 text-xs leading-5 text-[var(--soil)]">从当前总线向下展开；点击任一项目即可进入它的完整记录。</p><ProjectTreeBranch nodes={projectTree} /></div>}
       {incoming.length > 0 && <div className="mt-6"><div className="flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-[var(--ink)]">关联项目</h3><span className="pixel-chip">{incoming.length} 项</span></div><p className="mt-2 text-sm leading-6 text-[var(--soil)]">这些事线把当前事线作为共同的总线；点开卡片可查看完整项目，或在此展开它的全部时间线。</p><div className="mt-3 grid grid-cols-3 gap-2"><span className="pixel-chip justify-center">{incoming.filter((relation) => relation.event_status === "active").length} 进行中</span><span className="pixel-chip justify-center">{incoming.filter((relation) => relation.event_status === "paused").length} 已暂停</span><span className="pixel-chip justify-center">{incoming.reduce((total, relation) => total + relation.node_count, 0)} 个节点</span></div><RelatedProjectCards eventId={eventId} expandedProjectId={expandedProjectId} relations={incoming} /></div>}
     </section>
   );
