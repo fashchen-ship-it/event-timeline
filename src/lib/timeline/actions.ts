@@ -350,3 +350,40 @@ export async function deleteAttachment(formData: FormData) {
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath(`/events/${parsed.data.eventId}/nodes/${parsed.data.nodeId}/edit`);
 }
+
+const bulkDeleteAttachmentsSchema = z.array(z.string().uuid()).min(1).max(20);
+
+export type AttachmentCleanupActionState = { error?: string; success?: string; deletedCount?: number; freedBytes?: number };
+
+/** Removes selected originals from Storage and their private metadata records together. */
+export async function bulkDeleteAttachments(
+  _previousState: AttachmentCleanupActionState,
+  formData: FormData,
+): Promise<AttachmentCleanupActionState> {
+  const attachmentIds = [...new Set(formData.getAll("attachmentIds").map(String))];
+  const parsed = bulkDeleteAttachmentsSchema.safeParse(attachmentIds);
+  if (!parsed.success) return { error: "请至少选择一个附件；一次最多清理 20 个。" };
+
+  const { supabase } = await requireUser();
+  const { data: attachments, error: readError } = await supabase
+    .from("attachments")
+    .select("id, storage_path, file_size")
+    .in("id", parsed.data);
+  if (readError) return { error: "读取要清理的附件失败，请稍后重试。" };
+  if (!attachments?.length) return { error: "没有找到可清理的附件；它们可能已被删除。" };
+
+  const { error: storageError } = await supabase.storage.from("timeline-files").remove(attachments.map((attachment) => attachment.storage_path));
+  if (storageError) return { error: "无法删除附件原件，记录没有被移除。请稍后再试。" };
+
+  const { error: deleteError } = await supabase.from("attachments").delete().in("id", attachments.map((attachment) => attachment.id));
+  if (deleteError) return { error: "附件原件已删除，但记录清理失败。请刷新页面后重试。" };
+
+  revalidatePath("/storage");
+  revalidatePath("/events");
+  revalidatePath("/projects");
+  return {
+    success: `已删除 ${attachments.length} 个附件，释放约 ${Math.max(1, Math.round(attachments.reduce((total, attachment) => total + Number(attachment.file_size || 0), 0) / 1024))} KB。`,
+    deletedCount: attachments.length,
+    freedBytes: attachments.reduce((total, attachment) => total + Number(attachment.file_size || 0), 0),
+  };
+}
