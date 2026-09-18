@@ -13,6 +13,13 @@
       h1 { margin: 22px 0 10px; font-size: 24px; letter-spacing: .03em; }
       p { margin: 0; color: #705846; line-height: 1.8; font-size: 15px; }
       button { margin-top: 22px; min-height: 44px; border: 2px solid #416b49; background: #8da77a; color: #fffaf0; box-shadow: 2px 2px 0 #25442e; padding: 0 16px; font: 700 15px/1 inherit; }
+      #snapshot { margin-top: 20px; border-top: 1px dashed #c9b79a; padding-top: 16px; }
+      #snapshot h2 { margin: 0 0 8px; color: #416b49; font-size: 14px; }
+      #snapshot p { font-size: 13px; }
+      #snapshot ul { margin: 10px 0 0; padding: 0; list-style: none; }
+      #snapshot li { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid #eee2ce; padding: 9px 0; font-size: 13px; }
+      #snapshot li span { overflow: hidden; color: #342d28; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+      #snapshot li small { flex: 0 0 auto; color: #705846; }
     </style>
   </head>
   <body>
@@ -20,7 +27,54 @@
       <div class="mark" aria-hidden="true">×</div>
       <h1>暂时离线</h1>
       <p>网络恢复后就可以继续查看和记录。若你此前打开过首页，重新从桌面图标进入后可使用离线快记。</p>
+      <section id="snapshot" hidden>
+        <h2>最近缓存的事线</h2>
+        <p>这是这台设备上当前登录账号最近打开过的列表，仅供离线查看；恢复网络后可打开详情。</p>
+        <ul id="snapshot-list"></ul>
+        <p id="snapshot-drafts" hidden></p>
+      </section>
       <button type="button" onclick="location.reload()">重新连接</button>
     </main>
+    <script>
+      (function () {
+        try {
+          var userId = sessionStorage.getItem("shixian-offline-snapshot-user");
+          if (!userId) return;
+          var raw = localStorage.getItem("shixian-offline-events-" + userId);
+          if (!raw) return;
+          var snapshot = JSON.parse(raw);
+          if (!snapshot || !Array.isArray(snapshot.events) || !snapshot.events.length) return;
+          var labels = { active: "进行中", paused: "已暂停", completed: "已完成", archived: "已归档" };
+          var list = document.getElementById("snapshot-list");
+          snapshot.events.slice(0, 8).forEach(function (event) {
+            var item = document.createElement("li");
+            var title = document.createElement("span");
+            title.textContent = event.title || "未命名事线";
+            var meta = document.createElement("small");
+            meta.textContent = labels[event.status] || "记录";
+            item.appendChild(title);
+            item.appendChild(meta);
+            list.appendChild(item);
+          });
+          document.getElementById("snapshot").hidden = false;
+          if ("indexedDB" in window) {
+            var request = indexedDB.open("shixian-offline", 1);
+            request.onsuccess = function () {
+              try {
+                var getAll = request.result.transaction("node-queue", "readonly").objectStore("node-queue").getAll();
+                getAll.onsuccess = function () {
+                  var pending = getAll.result.filter(function (draft) { return draft.userId === userId; }).length;
+                  if (pending) {
+                    var draftNote = document.getElementById("snapshot-drafts");
+                    draftNote.textContent = "这台设备还有 " + pending + " 条离线记录，恢复网络后会自动同步。";
+                    draftNote.hidden = false;
+                  }
+                };
+              } catch (_) { /* The list remains useful if IndexedDB cannot be read. */ }
+            };
+          }
+        } catch (_) { /* Offline fallback should stay usable without browser storage. */ }
+      }());
+    </script>
   </body>
 </html>

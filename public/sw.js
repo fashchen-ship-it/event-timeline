@@ -1,4 +1,4 @@
-const CACHE_NAME = "shixian-static-v5";
+const CACHE_NAME = "shixian-static-v6";
 const APP_SHELL = ["/offline.html", "/manifest.webmanifest", "/icon"];
 
 self.addEventListener("install", (event) => {

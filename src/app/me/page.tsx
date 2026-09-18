@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { signOut } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell, PixelIcon } from "@/components/ui/pixel";
 import { PwaInstallButton } from "@/components/pwa-install-button";
@@ -10,6 +9,7 @@ import { AttachmentBackupButton } from "@/components/backup/attachment-backup-bu
 import { FullBackupButton } from "@/components/backup/full-backup-button";
 import { CollectionManager } from "@/components/events/collection-manager";
 import { getEventCollections } from "@/lib/events/queries";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export const dynamic = "force-dynamic";
 export default async function MePage() {
@@ -29,7 +29,7 @@ export default async function MePage() {
       <section className="pixel-card mt-5 p-5" id="collection-management"><h2 className="pixel-title text-lg">分类管理</h2><p className="mt-2 text-sm leading-6 text-[var(--soil)]">删除分类不会删除事线；相关事线会变为未分类，之后可随时重新归类。</p><CollectionManager collections={collections} /></section>
       <section className="pixel-card mt-5 p-5"><h2 className="pixel-title text-lg">数据说明</h2><p className="mt-3 text-sm leading-7 text-[var(--soil)]">你的事件、节点、标签和附件仅对当前账号可见。数据通过 Supabase 的行级安全策略隔离，并同步到你登录的设备。</p></section>
       <section className="pixel-card mt-5 p-5"><h2 className="pixel-title text-lg">关于事线</h2><p className="mt-3 text-sm leading-7 text-[var(--soil)]">事线只记录一件事情已经发生的重要节点，不承担待办、日历或项目管理功能。</p></section>
-      <form action={signOut} className="mt-8"><button className="pixel-button pixel-button-secondary text-base" type="submit">退出登录</button></form>
+      <div className="mt-8"><SignOutButton /></div>
       <BottomNav />
     </PageShell>
   );

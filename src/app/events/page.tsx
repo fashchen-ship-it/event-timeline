@@ -11,6 +11,7 @@ import { PageShell, PixelEmptyState, PixelIcon } from "@/components/ui/pixel";
 import { ActionNotice } from "@/components/ui/action-notice";
 import { PixelHeaderCompanions } from "@/components/ui/pixel-companions";
 import { OfflineQuickCapture } from "@/components/offline/offline-quick-capture";
+import { OfflineEventSnapshot } from "@/components/offline/offline-event-snapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         </div>
       </header>
       <ActionNotice />
+      {!recordsReadFailed && <OfflineEventSnapshot events={events.map((event) => ({ id: event.id, title: event.title, status: event.status, nodeCount: event.event_nodes?.[0]?.count ?? 0, updatedAt: event.updated_at }))} userId={user.id} />}
       <OfflineQuickCapture events={events.map(({ id, title }) => ({ id, title }))} />
 
       {recordsReadFailed ? <div className="mt-8"><PixelEmptyState icon="hourglass" title="记录暂时没有加载出来。">你的数据没有被删除。多半是网络或服务短暂波动，请重新打开一次；如果刚保存过记录，也可以稍等几秒后再试。<Link className="pixel-button pixel-button-primary mt-5 min-h-11 px-4 text-sm" href="/events"><PixelIcon className="size-4" name="journal" />重新打开事件</Link></PixelEmptyState></div> : !events.length ? (
