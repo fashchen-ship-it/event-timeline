@@ -5,6 +5,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_ARCHIVE_BYTES = 35 * 1024 * 1024;
+// Leave room for the JSON manifest and ZIP headers so every downloaded part stays below 35MB.
+const MAX_PART_ATTACHMENT_BYTES = 28 * 1024 * 1024;
 const encoder = new TextEncoder();
 
 function safeFileName(value: string) {
@@ -12,11 +14,31 @@ function safeFileName(value: string) {
   return (clean || "attachment").slice(0, 180);
 }
 
-function fileName() {
-  return `event-timeline-full-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+function fileName(part: number, total: number) {
+  const prefix = `event-timeline-full-backup-${new Date().toISOString().slice(0, 10)}`;
+  return total > 1 ? `${prefix}-part-${part}-of-${total}.zip` : `${prefix}.zip`;
 }
 
-export async function GET() {
+function splitAttachments<T extends { file_size: number | null }>(attachments: T[]) {
+  const parts: T[][] = [[]];
+  let partBytes = 0;
+  for (const attachment of attachments) {
+    const size = Math.max(1, Number(attachment.file_size || 0));
+    if (parts.at(-1)?.length && partBytes + size > MAX_PART_ATTACHMENT_BYTES) {
+      parts.push([]);
+      partBytes = 0;
+    }
+    parts.at(-1)?.push(attachment);
+    partBytes += size;
+  }
+  return parts;
+}
+
+function validBundleId(value: string | null) {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) ? value : crypto.randomUUID();
+}
+
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response("请先登录后再下载完整备份。", { status: 401 });
@@ -38,32 +60,38 @@ export async function GET() {
   if (checklistError && !["42P01", "PGRST205"].includes(checklistError.code)) return new Response("读取清单备份失败，请稍后重试。", { status: 500 });
 
   const attachments = attachmentsResult.data ?? [];
-  const recordedBytes = attachments.reduce((total, item) => total + Number(item.file_size || 0), 0);
-  if (recordedBytes > MAX_ARCHIVE_BYTES) return new Response("附件原件合计超过 35MB，暂不能生成单文件完整备份。请使用 JSON 和附件 ZIP 分开保存。", { status: 413 });
+  const parts = splitAttachments(attachments);
+  const url = new URL(request.url);
+  const requestedPart = Number(url.searchParams.get("part") || "1");
+  if (!Number.isInteger(requestedPart) || requestedPart < 1 || requestedPart > parts.length) return new Response("备份分包编号无效，请重新开始下载。", { status: 400 });
+  const bundleId = validBundleId(url.searchParams.get("bundle"));
+  const partAttachments = parts[requestedPart - 1] ?? [];
 
   const entries: { name: string; data: Uint8Array; modifiedAt?: Date }[] = [];
   const files: { attachment_id: string; archive_path: string }[] = [];
   let downloadedBytes = 0;
-  for (const attachment of attachments) {
+  for (const attachment of partAttachments) {
     const { data, error } = await supabase.storage.from("timeline-files").download(attachment.storage_path);
     if (error || !data) continue;
     const bytes = new Uint8Array(await data.arrayBuffer());
     downloadedBytes += bytes.length;
-    if (downloadedBytes > MAX_ARCHIVE_BYTES) return new Response("附件原件合计超过 35MB，暂不能生成单文件完整备份。请使用 JSON 和附件 ZIP 分开保存。", { status: 413 });
+    if (downloadedBytes > MAX_PART_ATTACHMENT_BYTES) return new Response("此备份分包超过安全大小，请稍后重试。", { status: 413 });
     const archivePath = `files/${attachment.id}-${safeFileName(attachment.file_name)}`;
     entries.push({ name: archivePath, data: bytes, modifiedAt: attachment.created_at ? new Date(attachment.created_at) : undefined });
     files.push({ attachment_id: attachment.id, archive_path: archivePath });
   }
-  const payload = {
-    format: "event-timeline-backup", version: 1, exported_at: new Date().toISOString(), note: "完整备份 ZIP 包含附件原件。",
-    collections: collectionsResult.data ?? [], events: eventsResult.data ?? [], nodes: nodesResult.data ?? [], attachments,
-    tags: tagsResult.data ?? [], event_tags: eventTagsResult.data ?? [], node_tags: nodeTagsResult.data ?? [],
-    event_references: referencesResult.data ?? [], event_visits: visitsResult.data ?? [], node_checklist_items: checklistItems ?? [],
-  };
-  const manifest = { format: "event-timeline-full-backup", version: 1, attachment_files: files };
-  entries.unshift({ name: "backup.json", data: encoder.encode(JSON.stringify(payload)), modifiedAt: new Date() });
+  const manifest = { format: "event-timeline-full-backup", version: 1, bundle_id: bundleId, part_number: requestedPart, part_count: parts.length, attachment_files: files };
+  if (requestedPart === 1) {
+    const payload = {
+      format: "event-timeline-backup", version: 1, exported_at: new Date().toISOString(), note: "完整备份 ZIP 包含附件原件。",
+      collections: collectionsResult.data ?? [], events: eventsResult.data ?? [], nodes: nodesResult.data ?? [], attachments,
+      tags: tagsResult.data ?? [], event_tags: eventTagsResult.data ?? [], node_tags: nodeTagsResult.data ?? [],
+      event_references: referencesResult.data ?? [], event_visits: visitsResult.data ?? [], node_checklist_items: checklistItems ?? [],
+    };
+    entries.unshift({ name: "backup.json", data: encoder.encode(JSON.stringify(payload)), modifiedAt: new Date() });
+  }
   entries.unshift({ name: "full-backup.json", data: encoder.encode(JSON.stringify(manifest)), modifiedAt: new Date() });
   const archive = createZip(entries);
-  if (archive.length > MAX_ARCHIVE_BYTES) return new Response("完整备份超过 35MB，暂不能生成单文件备份。请使用 JSON 和附件 ZIP 分开保存。", { status: 413 });
-  return new Response(archive, { headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${fileName()}"`, "Cache-Control": "no-store" } });
+  if (archive.length > MAX_ARCHIVE_BYTES) return new Response("完整备份分包超过 35MB，暂不能生成。请稍后重试。", { status: 413 });
+  return new Response(archive, { headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${fileName(requestedPart, parts.length)}"`, "Cache-Control": "no-store", "X-Event-Timeline-Bundle": bundleId, "X-Event-Timeline-Part": String(requestedPart), "X-Event-Timeline-Parts": String(parts.length) } });
 }

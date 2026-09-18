@@ -22,7 +22,7 @@ type ImportResult = {
   skippedChecklistItems?: number;
 };
 
-type PreviewState = BackupPreview & { isFullBackup: boolean };
+type PreviewState = BackupPreview & { isFullBackup: boolean; partCount: number };
 
 function countList(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
@@ -48,24 +48,40 @@ function readPreview(value: unknown): BackupPreview {
   };
 }
 
-async function readPreviewFromFile(file: File): Promise<PreviewState> {
-  const isZip = file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip";
-  if (!isZip) {
+async function readPreviewFromFiles(files: File[]): Promise<PreviewState> {
+  if (!files.length) throw new Error("请选择备份文件。");
+  const isZip = (file: File) => file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip";
+  if (!files.some(isZip)) {
+    if (files.length > 1) throw new Error("JSON 备份一次只能选择一个文件。");
+    const file = files[0];
     if (file.size > 10 * 1024 * 1024) throw new Error("JSON 备份文件不能超过 10MB。");
-    return { ...readPreview(JSON.parse(await file.text())), isFullBackup: false };
+    return { ...readPreview(JSON.parse(await file.text())), isFullBackup: false, partCount: 1 };
   }
-  if (file.size > 40 * 1024 * 1024) throw new Error("完整备份 ZIP 不能超过 40MB。");
-  const archive = readZip(new Uint8Array(await file.arrayBuffer()));
-  const backup = archive.get("backup.json");
-  const manifest = archive.get("full-backup.json");
-  if (!backup || !manifest) throw new Error("请选择从事线下载的完整备份 ZIP。");
-  const manifestValue = JSON.parse(new TextDecoder().decode(manifest)) as { format?: unknown; version?: unknown };
-  if (manifestValue.format !== "event-timeline-full-backup" || manifestValue.version !== 1) throw new Error("完整备份 ZIP 版本不受支持。");
-  return { ...readPreview(JSON.parse(new TextDecoder().decode(backup))), isFullBackup: true };
+  if (!files.every(isZip)) throw new Error("完整备份分包不能和 JSON 文件一起选择。");
+  const parts = await Promise.all(files.map(async (file) => {
+    if (file.size > 40 * 1024 * 1024) throw new Error("每个完整备份 ZIP 不能超过 40MB。");
+    const archive = readZip(new Uint8Array(await file.arrayBuffer()));
+    const manifest = archive.get("full-backup.json");
+    if (!manifest) throw new Error("请选择从事线下载的完整备份 ZIP。");
+    const manifestValue = JSON.parse(new TextDecoder().decode(manifest)) as { format?: unknown; version?: unknown; bundle_id?: unknown; part_number?: unknown; part_count?: unknown };
+    if (manifestValue.format !== "event-timeline-full-backup" || manifestValue.version !== 1) throw new Error("完整备份 ZIP 版本不受支持。");
+    return { backup: archive.get("backup.json"), bundleId: typeof manifestValue.bundle_id === "string" ? manifestValue.bundle_id : undefined, partNumber: typeof manifestValue.part_number === "number" ? manifestValue.part_number : undefined, partCount: typeof manifestValue.part_count === "number" ? manifestValue.part_count : undefined };
+  }));
+  const multipart = parts.some((part) => part.partCount !== undefined);
+  if (!multipart) {
+    if (parts.length !== 1 || !parts[0].backup) throw new Error("普通完整备份 ZIP 一次只能选择一个文件。");
+    return { ...readPreview(JSON.parse(new TextDecoder().decode(parts[0].backup))), isFullBackup: true, partCount: 1 };
+  }
+  const first = parts.find((part) => part.partNumber === 1);
+  const total = parts[0].partCount;
+  if (!first?.backup || !total || parts.length !== total || parts.some((part) => part.bundleId !== parts[0].bundleId || part.partCount !== total) || new Set(parts.map((part) => part.partNumber)).size !== total) {
+    throw new Error(`请选择同一批完整备份的全部 ${total ?? ""} 个 ZIP 分包。`);
+  }
+  return { ...readPreview(JSON.parse(new TextDecoder().decode(first.backup))), isFullBackup: true, partCount: total };
 }
 
 export function BackupImportForm() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
@@ -73,29 +89,29 @@ export function BackupImportForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] ?? null;
-    setFile(null);
+    const nextFiles = Array.from(event.target.files ?? []);
+    setFiles([]);
     setPreview(null);
     setResult(null);
     setConfirmed(false);
     setError("");
-    if (!nextFile) return;
+    if (!nextFiles.length) return;
     try {
-      setPreview(await readPreviewFromFile(nextFile));
-      setFile(nextFile);
+      setPreview(await readPreviewFromFiles(nextFiles));
+      setFiles(nextFiles);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "无法读取备份文件。");
     }
   }
 
   async function importBackup() {
-    if (!file || !preview || !confirmed || isSubmitting) return;
+    if (!files.length || !preview || !confirmed || isSubmitting) return;
     setIsSubmitting(true);
     setError("");
     setResult(null);
     try {
       const formData = new FormData();
-      formData.set("backup", file);
+      files.forEach((file) => formData.append("backup", file));
       const response = await fetch("/api/backup/import", { method: "POST", body: formData });
       const payload = await response.json().catch(() => null) as { error?: string; result?: ImportResult } | null;
       if (!response.ok || !payload?.result) throw new Error(payload?.error ?? "导入失败，请稍后重试。");
@@ -112,15 +128,15 @@ export function BackupImportForm() {
       <div className="flex items-center gap-2"><PixelIcon className="size-5 text-[var(--wheat)]" name="archive" /><h2 className="pixel-title text-lg">选择备份文件</h2></div>
       <label className="pixel-input mt-4 flex min-h-12 cursor-pointer items-center gap-3 px-3 text-sm text-[var(--soil)]">
         <PixelIcon className="size-5 text-[var(--sage)]" name="file" />
-        <span className="min-w-0 truncate">{file ? file.name : "点击选择 JSON 或完整备份 .zip 文件"}</span>
-        <input accept="application/json,.json,application/zip,.zip" className="sr-only" onChange={selectFile} type="file" />
+        <span className="min-w-0 truncate">{files.length ? `${files[0].name}${files.length > 1 ? ` 等 ${files.length} 个文件` : ""}` : "点击选择 JSON 或完整备份 .zip 文件"}</span>
+        <input accept="application/json,.json,application/zip,.zip" className="sr-only" multiple onChange={selectFile} type="file" />
       </label>
       {error && <p className="pixel-alert mt-4" role="alert">{error}</p>}
       {preview && !result && <>
         <div className="mt-5 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
           {[["分类", preview.collections], ["事件", preview.events], ["节点", preview.nodes], ["标签", preview.tags], ["关联", preview.references], ["清单", preview.checklistItems]].map(([label, count]) => <div className="rounded-sm border-2 border-[var(--line)] bg-[var(--cream-deep)] p-3" key={String(label)}><span className="block text-xs text-[var(--soil)]">{label}</span><strong className="mt-1 block text-lg text-[var(--ink)]">{count}</strong></div>)}
         </div>
-        {preview.attachments > 0 && <p className="mt-4 text-sm leading-6 text-[var(--soil)]">{preview.isFullBackup ? `完整 ZIP 含 ${preview.attachments} 个附件，原件会自动恢复并重新关联。` : `此 JSON 还记录了 ${preview.attachments} 个附件；由于原文件不在 JSON 中，它们会跳过。`}</p>}
+        {preview.attachments > 0 && <p className="mt-4 text-sm leading-6 text-[var(--soil)]">{preview.isFullBackup ? `完整备份${preview.partCount > 1 ? `共 ${preview.partCount} 个 ZIP 分包，` : " "}含 ${preview.attachments} 个附件，原件会自动恢复并重新关联。` : `此 JSON 还记录了 ${preview.attachments} 个附件；由于原文件不在 JSON 中，它们会跳过。`}</p>}
         <label className="mt-5 flex items-start gap-3 text-sm leading-6 text-[var(--soil)]"><input checked={confirmed} className="mt-1 size-4 accent-[var(--sage)]" onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" /><span>我知道导入会创建新的记录副本，且不会覆盖现在的数据。</span></label>
         <button className="pixel-button mt-5 min-h-12 px-5" disabled={!confirmed || isSubmitting} onClick={importBackup} type="button"><PixelIcon className="size-4" name="archive" />{isSubmitting ? "正在导入…" : "确认导入为新副本"}</button>
       </>}

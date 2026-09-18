@@ -26,7 +26,7 @@ export default async function BackupImportPage() {
         <ul className="mt-3 space-y-2 text-sm leading-7 text-[var(--soil)]">
           <li>· 同名分类和标签会沿用现有内容；其余数据会创建为新副本。</li>
           <li>· 事件、节点、清单与事件关联会一并恢复；原有置顶和最近浏览不会带回。</li>
-          <li>· 完整恢复 ZIP 会自动恢复并重新关联其中的附件原件；普通 JSON 不含附件原件，因此附件会跳过。</li>
+          <li>· 完整恢复 ZIP 会自动恢复并重新关联其中的附件原件；若下载成多个分包，请一次选择同一批全部 ZIP。普通 JSON 不含附件原件，因此附件会跳过。</li>
           <li>· 单独下载的附件 ZIP 用于留存原件，不能自动重新关联；请优先使用完整恢复 ZIP。</li>
         </ul>
       </section>

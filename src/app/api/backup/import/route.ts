@@ -65,6 +65,9 @@ type Backup = z.infer<typeof backupSchema>;
 const fullBackupManifestSchema = z.object({
   format: z.literal("event-timeline-full-backup"),
   version: z.literal(1),
+  bundle_id: identifier.optional(),
+  part_number: z.number().int().positive().max(100).optional(),
+  part_count: z.number().int().positive().max(100).optional(),
   attachment_files: z.array(z.object({
     attachment_id: identifier,
     archive_path: z.string().regex(/^files\/[^/]+$/),
@@ -75,6 +78,14 @@ type ParsedImport = {
   backup: Backup;
   attachmentFiles: Map<string, Uint8Array>;
   isFullBackup: boolean;
+};
+
+type ParsedFullBackupPart = {
+  backup?: Backup;
+  attachmentFiles: Map<string, Uint8Array>;
+  bundleId?: string;
+  partNumber?: number;
+  partCount?: number;
 };
 
 function failure(message: string, status = 400) {
@@ -96,25 +107,65 @@ function safeFileName(value: string) {
   return (clean || "attachment").slice(0, 180);
 }
 
-async function parseImportFile(file: File): Promise<ParsedImport> {
-  const isZip = file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip";
-  if (!isZip) {
-    if (file.size > MAX_JSON_BACKUP_SIZE) throw new Error("JSON 备份文件不能超过 10MB。");
-    return { backup: backupSchema.parse(JSON.parse(await file.text())), attachmentFiles: new Map(), isFullBackup: false };
-  }
-  if (file.size > MAX_FULL_BACKUP_SIZE) throw new Error("完整备份 ZIP 不能超过 40MB。");
+function isZipFile(file: File) {
+  return file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip";
+}
+
+async function parseFullBackupPart(file: File): Promise<ParsedFullBackupPart> {
+  if (file.size > MAX_FULL_BACKUP_SIZE) throw new Error("每个完整备份 ZIP 不能超过 40MB。");
   const files = readZip(new Uint8Array(await file.arrayBuffer()));
   const backupFile = files.get("backup.json");
   const manifestFile = files.get("full-backup.json");
-  if (!backupFile || !manifestFile) throw new Error("这不是从事线下载的完整备份 ZIP。");
-  const backup = backupSchema.parse(JSON.parse(textDecoder.decode(backupFile)));
+  if (!manifestFile) throw new Error("这不是从事线下载的完整备份 ZIP。");
   const manifest = fullBackupManifestSchema.parse(JSON.parse(textDecoder.decode(manifestFile)));
+  if (Boolean(manifest.bundle_id) !== Boolean(manifest.part_number) || Boolean(manifest.bundle_id) !== Boolean(manifest.part_count)) {
+    throw new Error("完整备份分包信息不完整。请重新下载这一批备份。");
+  }
+  if (!backupFile && manifest.part_number === 1) throw new Error("完整备份的第一个分包缺少记录数据。");
+  if (!backupFile && !manifest.part_number) throw new Error("完整备份缺少记录数据。");
   const attachmentFiles = new Map<string, Uint8Array>();
   manifest.attachment_files.forEach((item) => {
     const source = files.get(item.archive_path);
     if (source && source.length <= 10 * 1024 * 1024) attachmentFiles.set(item.attachment_id, source);
   });
-  return { backup, attachmentFiles, isFullBackup: true };
+  return { backup: backupFile ? backupSchema.parse(JSON.parse(textDecoder.decode(backupFile))) : undefined, attachmentFiles, bundleId: manifest.bundle_id, partNumber: manifest.part_number, partCount: manifest.part_count };
+}
+
+async function parseImportFiles(files: File[]): Promise<ParsedImport> {
+  if (!files.length) throw new Error("请选择 JSON 或完整 ZIP 备份文件。");
+  const zipFiles = files.filter(isZipFile);
+  if (!zipFiles.length) {
+    if (files.length > 1) throw new Error("JSON 备份一次只能选择一个文件。");
+    const file = files[0];
+    if (file.size > MAX_JSON_BACKUP_SIZE) throw new Error("JSON 备份文件不能超过 10MB。");
+    return { backup: backupSchema.parse(JSON.parse(await file.text())), attachmentFiles: new Map(), isFullBackup: false };
+  }
+  if (zipFiles.length !== files.length) throw new Error("完整备份分包不能和 JSON 文件一起选择。");
+  const parts = await Promise.all(zipFiles.map(parseFullBackupPart));
+  const multipart = parts.some((part) => part.partCount !== undefined);
+  if (!multipart) {
+    if (parts.length !== 1 || !parts[0].backup) throw new Error("普通完整备份 ZIP 一次只能选择一个文件。");
+    return { backup: parts[0].backup, attachmentFiles: parts[0].attachmentFiles, isFullBackup: true };
+  }
+  const bundleId = parts[0].bundleId;
+  const partCount = parts[0].partCount;
+  if (!bundleId || !partCount || parts.some((part) => part.bundleId !== bundleId || part.partCount !== partCount || !part.partNumber)) {
+    throw new Error("请选择同一批完整备份的全部 ZIP 分包。");
+  }
+  const numbers = new Set(parts.map((part) => part.partNumber));
+  if (parts.length !== partCount || numbers.size !== partCount || Array.from({ length: partCount }, (_, index) => index + 1).some((number) => !numbers.has(number))) {
+    throw new Error(`完整备份缺少分包。请一次选择全部 ${partCount} 个 ZIP 文件。`);
+  }
+  const firstPart = parts.find((part) => part.partNumber === 1);
+  if (!firstPart?.backup) throw new Error("完整备份缺少第一个分包，请重新选择全部文件。");
+  const attachmentFiles = new Map<string, Uint8Array>();
+  for (const part of parts) {
+    for (const [attachmentId, attachment] of part.attachmentFiles) {
+      if (attachmentFiles.has(attachmentId)) throw new Error("完整备份包含重复附件，请重新下载这一批备份。");
+      attachmentFiles.set(attachmentId, attachment);
+    }
+  }
+  return { backup: firstPart.backup, attachmentFiles, isFullBackup: true };
 }
 
 async function importCollections(backup: Backup, userId: string, supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -166,9 +217,8 @@ export async function POST(request: Request) {
   let parsedImport: ParsedImport;
   try {
     const formData = await request.formData();
-    const file = formData.get("backup");
-    if (!(file instanceof File)) return failure("请选择 JSON 或完整 ZIP 备份文件。");
-    parsedImport = await parseImportFile(file);
+    const files = formData.getAll("backup").filter((file): file is File => file instanceof File);
+    parsedImport = await parseImportFiles(files);
   } catch (error) {
     if (error instanceof z.ZodError) return failure("备份结构不正确，请选择从事线下载的 JSON 备份。");
     return failure(error instanceof Error ? error.message : "无法读取备份文件，请检查文件后重试。");
