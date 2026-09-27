@@ -266,7 +266,8 @@ export async function getEventForEdit(id: string) {
     .eq("id", id)
     .single();
   if (error || !data) notFound();
-  return data as unknown as EditableEvent;
+  // Supabase names this nested relationship `event_tags`; the form consumes it as `tags`.
+  return { ...data, tags: data.event_tags ?? [] } as unknown as EditableEvent;
 }
 
 export async function getEventDetail(id: string, newestFirst: boolean, importantOnly: boolean) {

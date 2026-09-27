@@ -18,7 +18,7 @@ export function EventForm({ event, collections = [] }: EventFormProps) {
   const action = event ? updateEvent : createEvent;
   const [state, formAction, isPending] = useActionState(action, initialState);
   const [icon, setIcon] = useState(event?.icon ?? "");
-  const tags = event?.tags.flatMap(({ tag }) => (tag ? [tag.name] : [])).join(",") ?? "";
+  const tags = event?.tags?.flatMap(({ tag }) => (tag ? [tag.name] : [])).join(",") ?? "";
 
   return (
     <form action={formAction} className="pixel-paper mt-7 space-y-6 p-4 sm:p-6" noValidate>
